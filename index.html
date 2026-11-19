@@ -202,6 +202,34 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
 .wrow .wd{font-size:12px;color:var(--muted);min-width:40px;text-align:right}
 .wrow b{min-width:72px;text-align:right}
 .wrow .x{color:var(--muted);font-size:18px;padding:0 4px}
+.water{padding:14px 16px}
+.wico{background:#E3F0FF}
+@media (prefers-color-scheme: dark){.wico{background:#14263A}}
+.wbtns{margin-left:auto;display:flex;gap:8px;align-items:center}
+.wminus{width:38px;height:38px;border-radius:13px;background:var(--bg);border:1.5px solid var(--line);font-size:22px;font-weight:600;color:var(--muted)}
+.wplus{background:linear-gradient(135deg,#3B9BFF,#2F6BFF);box-shadow:0 4px 12px rgba(47,107,255,.3)}
+.wbar{height:10px;border-radius:10px;background:var(--line);overflow:hidden;margin:12px 0 10px}
+.wbar i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#3B9BFF,#2F6BFF);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.wrowbtns{display:flex;align-items:center;gap:10px}
+.cups{display:flex;gap:4px;flex-wrap:wrap;flex:1}
+.cups i{width:14px;height:18px;border-radius:3px 3px 6px 6px;border:2px solid #9CC4FF;display:block}
+.cups i.on{background:#3B9BFF;border-color:#3B9BFF}
+.wchip{padding:7px 11px;border-radius:11px;background:var(--bg);border:1.5px solid var(--line);font-weight:600;font-size:13px;white-space:nowrap}
+.weeknav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.wklabel{text-align:center}.wklabel b{display:block;font-size:17px}.wklabel span{font-size:13px;color:var(--muted);font-weight:500}
+.ctitle{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin-bottom:10px}
+.labels span.today{color:var(--accent)}
+.balance{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.balance.minus{color:var(--accent)}.balance.plus{color:var(--danger)}
+.mrow{margin-bottom:12px}.mrow:last-child{margin-bottom:0}
+.mrow .lbl{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.mrow .bar{height:9px}
+.wdots{display:flex;justify-content:space-between;margin-top:14px}
+.wdots div{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1}
+.wdots i{width:26px;height:34px;border-radius:5px 5px 9px 9px;border:2px solid #9CC4FF;background:linear-gradient(to top,#3B9BFF var(--p),transparent var(--p));display:block}
+.wdots i.fut{opacity:.35}
+.wdots span{font-size:11px;color:var(--muted);font-weight:600}
+.wknote{text-align:center;margin:-4px 8px 14px}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
   padding:11px 18px;border-radius:14px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -235,16 +263,15 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
       </div>
       <div class="macros" id="macros"></div>
     </section>
+    <section class="card water" id="waterCard"></section>
     <div id="meals"></div>
   </section>
 
   <!-- FORTSCHRITT -->
   <section class="view" id="v-progress">
-    <div class="pagehead"><h1>Fortschritt</h1><p>Kalorien der letzten 7 Tage und dein Gewicht</p></div>
-    <section class="card">
-      <div class="kpis" id="kpis"></div>
-      <div class="chart" id="chart"></div>
-    </section>
+    <div class="pagehead"><h1>Fortschritt</h1><p>Wochenauswertung und Gewicht</p></div>
+    <div class="weeknav"><button class="iconbtn" id="wkPrev" aria-label="Vorherige Woche">‹</button><div class="wklabel"><b id="wkTitle"></b><span id="wkRange"></span></div><button class="iconbtn" id="wkNext" aria-label="Nächste Woche">›</button></div>
+    <div id="weekBox"></div>
     <h2 class="sec">Gewicht</h2>
     <section class="card" id="wCard"></section>
   </section>
@@ -266,7 +293,7 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.4</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.5</p>
     </div>
   </section>
 </div>
@@ -289,7 +316,7 @@ var ACT=[[1.2,'Kaum Bewegung','Sitzend, wenig Sport'],[1.375,'Leicht aktiv','1�
 var C=2*Math.PI*52;
 
 /* ---------- Speicher ---------- */
-function blank(){return {profile:null,days:{},favs:[],weights:[],lastBackup:null};}
+function blank(){return {profile:null,days:{},favs:[],weights:[],water:{},lastBackup:null};}
 function load(){
   try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);var b=blank();for(var k in b){if(d[k]===undefined)d[k]=b[k];}return d;}}catch(e){}
   return blank();
@@ -390,6 +417,7 @@ function renderDiary(){
   }).join('');
   document.querySelectorAll('[data-add]').forEach(function(b){b.onclick=function(){openAdd(b.dataset.add);};});
   document.querySelectorAll('.entry').forEach(function(b){b.onclick=function(){entryActions(b.dataset.meal,b.dataset.id);};});
+  renderWater();
   renderBanner();
 }
 
@@ -731,19 +759,87 @@ function openManual(meal,edit,prefill){
     });
 }
 
+
+/* ---------- Wasser ---------- */
+function waterGoal(p){p=p||S.profile||{};return num(p.waterGoal)>0?num(p.waterGoal):2000;}
+function glassSize(p){p=p||S.profile||{};return num(p.glass)>0?num(p.glass):250;}
+function waterOf(key){return num((S.water||{})[key]);}
+function fmtL(ml){return (Math.round(ml/50)*50/1000).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function renderWater(){
+  var el=$('waterCard');if(!el)return;
+  var key=iso(cur),ml=waterOf(key),goal=waterGoal(),gl=glassSize(),pct=Math.min(ml/goal,1);
+  var glasses=Math.max(1,Math.round(goal/gl)),filled=Math.floor(ml/gl);
+  var cups='';for(var i=0;i<Math.min(glasses,12);i++)cups+='<i class="'+(i<filled?'on':'')+'"></i>';
+  el.innerHTML='<div class="mealhead"><div class="mealico wico">💧</div><div><h3>Wasser</h3><div class="k"><b>'+fmtL(ml)+'</b> von '+fmtL(goal)+' l'+(ml>=goal?' · Ziel erreicht 🎉':'')+'</div></div>'+
+    '<div class="wbtns"><button class="wminus" id="wMinus" aria-label="Wasser abziehen">−</button><button class="addbtn wplus" id="wPlus" aria-label="Glas hinzufügen">+</button></div></div>'+
+    '<div class="wbar"><i style="width:'+(pct*100)+'%"></i></div>'+
+    '<div class="wrowbtns"><div class="cups">'+cups+'</div><button class="wchip" id="wBig">+500 ml</button></div>';
+  function add(d){S.water=S.water||{};var v=Math.max(0,waterOf(key)+d);if(v)S.water[key]=v;else delete S.water[key];save();renderWater();}
+  $('wPlus').onclick=function(){add(gl);toast('+'+gl+' ml');};
+  $('wBig').onclick=function(){add(500);toast('+500 ml');};
+  $('wMinus').onclick=function(){if(!waterOf(key))return;add(-gl);};
+}
+
 /* ---------- Fortschritt ---------- */
+function isoWeek(d){var t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));var dn=(t.getUTCDay()+6)%7;t.setUTCDate(t.getUTCDate()-dn+3);var fy=new Date(Date.UTC(t.getUTCFullYear(),0,4));return 1+Math.round(((t-fy)/864e5-3+((fy.getUTCDay()+6)%7))/7);}
+var wkOffset=0;
+function weekStart(off){var d=new Date();d.setHours(12,0,0,0);var wd=(d.getDay()+6)%7;return addDays(d,-wd+7*off);}
 function renderProgress(){
-  var c=calc(S.profile)||{goal:2000};
-  var today=new Date();today.setHours(12,0,0,0);
-  var days=[];for(var i=6;i>=0;i--){var d=addDays(today,-i);days.push({d:d,t:totals(iso(d)).kcal});}
-  var logged=days.filter(function(x){return x.t>0;});
-  var avg=logged.length?logged.reduce(function(a,x){return a+x.t;},0)/logged.length:0;
-  var inGoal=logged.filter(function(x){return x.t<=c.goal;}).length;
-  $('kpis').innerHTML='<div class="kpi"><span>Ø pro Tag</span><b>'+fmt(avg)+'</b> <small class="hint">kcal</small></div><div class="kpi"><span>Im Ziel</span><b>'+inGoal+' / '+logged.length+'</b> <small class="hint">Tage</small></div>';
-  var max=Math.max(c.goal*1.25,Math.max.apply(null,days.map(function(x){return x.t;})));
-  $('chart').innerHTML='<div class="bars"><div class="goalline" style="bottom:'+(c.goal/max*100)+'%"></div>'+days.map(function(x){
-    return '<div class="b '+(x.t===0?'empty':x.t>c.goal?'over':'')+'" style="height:'+(x.t/max*100)+'%"></div>';
-  }).join('')+'</div><div class="labels">'+days.map(function(x){return '<span>'+x.d.toLocaleDateString('de-DE',{weekday:'short'}).replace('.','')+'</span>';}).join('')+'</div>';
+  var c=calc(S.profile)||{goal:2000,p:125,c:225,f:67};
+  var ws=weekStart(wkOffset),today=iso(new Date());
+  var days=[];for(var i=0;i<7;i++){var d=addDays(ws,i),k=iso(d),t=totals(k);days.push({d:d,k:k,t:t,w:waterOf(k),future:k>today});}
+  $('wkTitle').textContent=wkOffset===0?'Diese Woche':wkOffset===-1?'Letzte Woche':'KW '+isoWeek(ws);
+  $('wkRange').textContent=ws.toLocaleDateString('de-DE',{day:'numeric',month:'short'})+' – '+addDays(ws,6).toLocaleDateString('de-DE',{day:'numeric',month:'short',year:'numeric'});
+  $('wkNext').disabled=wkOffset>=0;$('wkNext').style.opacity=wkOffset>=0?.35:1;
+  $('wkPrev').onclick=function(){wkOffset--;renderProgress();};
+  $('wkNext').onclick=function(){if(wkOffset<0){wkOffset++;renderProgress();}};
+  var logged=days.filter(function(x){return x.t.kcal>0;});
+  var past=days.filter(function(x){return !x.future;});
+  var n=logged.length;
+  function avg(f){return n?logged.reduce(function(a,x){return a+f(x);},0)/n:0;}
+  var aK=avg(function(x){return x.t.kcal;}),aP=avg(function(x){return x.t.p;}),aC=avg(function(x){return x.t.c;}),aF=avg(function(x){return x.t.f;});
+  var inGoal=logged.filter(function(x){return x.t.kcal<=c.goal*1.05&&x.t.kcal>=c.goal*0.8;}).length;
+  var bal=logged.reduce(function(a,x){return a+(x.t.kcal-c.goal);},0);
+  var h='';
+  // Kalorien
+  var max=Math.max(c.goal*1.25,Math.max.apply(null,days.map(function(x){return x.t.kcal;})));
+  h+='<section class="card"><div class="ctitle">Kalorien</div><div class="kpis">'+
+    '<div class="kpi"><span>Ø pro Tag</span><b>'+fmt(aK)+'</b> <small class="hint">kcal</small></div>'+
+    '<div class="kpi"><span>Im Zielbereich</span><b>'+inGoal+' / '+n+'</b> <small class="hint">Tage</small></div></div>'+
+    '<div class="chart"><div class="bars"><div class="goalline" style="bottom:'+(c.goal/max*100)+'%"></div>'+days.map(function(x){
+      return '<div class="b '+(x.t.kcal===0?'empty':x.t.kcal>c.goal*1.05?'over':'')+'" style="height:'+(x.t.kcal/max*100)+'%" title="'+fmt(x.t.kcal)+' kcal"></div>';}).join('')+
+    '</div><div class="labels">'+days.map(function(x){return '<span class="'+(x.k===today?'today':'')+'">'+x.d.toLocaleDateString('de-DE',{weekday:'short'}).replace('.','')+'</span>';}).join('')+'</div></div>'+
+    '<p class="hint" style="margin-bottom:0">Gestrichelt: dein Tagesziel ('+fmt(c.goal)+' kcal). „Im Zielbereich“ = 80–105 % des Ziels.</p></section>';
+  // Bilanz
+  if(n){
+    var kg=bal/7000;
+    h+='<section class="card"><div class="ctitle">Bilanz der Woche</div><div class="balance '+(bal<=0?'minus':'plus')+'">'+(bal>0?'+':bal<0?'−':'±')+fmt(Math.abs(bal))+' kcal</div>'+
+      '<p class="hint" style="margin:4px 0 0">'+(bal<0?'unter':'über')+' deinem Ziel an '+n+' eingetragenen Tag'+(n>1?'en':'')+'. Grob geschätzt entspricht das '+(Math.abs(kg)<0.05?'weniger als 0,1 kg':(kg<0?'−':'+')+fmtKg(Math.abs(kg))+' kg')+' Körperfett (Faustregel ~7.000 kcal ≈ 1 kg, nur Näherung).</p></section>';
+  }
+  // Makros
+  function mrow(lbl,v,t,col){var pc=t?Math.round(v/t*100):0;return '<div class="mrow"><div class="lbl"><span>'+lbl+'</span><b>'+r0(v)+' / '+r0(t)+' g <small class="hint">'+pc+' %</small></b></div><div class="bar"><i style="width:'+Math.min(pc,100)+'%;background:'+col+'"></i></div></div>';}
+  h+='<section class="card"><div class="ctitle">Makros · Ø pro Tag</div>'+(n?mrow('Eiweiß',aP,c.p,'var(--p)')+mrow('Kohlenhydrate',aC,c.c,'var(--c)')+mrow('Fett',aF,c.f,'var(--f)'):'<div class="empty">Diese Woche noch keine Einträge.</div>')+'</section>';
+  // Wasser
+  var wDays=past.filter(function(x){return x.w>0;}),wGoal=waterGoal();
+  var wAvg=wDays.length?wDays.reduce(function(a,x){return a+x.w;},0)/wDays.length:0;
+  var wHit=past.filter(function(x){return x.w>=wGoal;}).length;
+  h+='<section class="card"><div class="ctitle">Wasser</div><div class="kpis">'+
+    '<div class="kpi"><span>Ø pro Tag</span><b>'+fmtL(wAvg)+'</b> <small class="hint">l</small></div>'+
+    '<div class="kpi"><span>Ziel erreicht</span><b>'+wHit+' / '+past.length+'</b> <small class="hint">Tage</small></div></div>'+
+    '<div class="wdots">'+days.map(function(x){var pc=Math.min(x.w/wGoal,1);return '<div><i style="--p:'+(pc*100)+'%" class="'+(x.future?'fut':'')+'"></i><span>'+x.d.toLocaleDateString('de-DE',{weekday:'short'}).replace('.','')+'</span></div>';}).join('')+'</div></section>';
+  // Gewicht in der Woche
+  var wk=weightsSorted().filter(function(w){return w.date>=days[0].k&&w.date<=days[6].k;});
+  if(wk.length){
+    var dW=wk[wk.length-1].kg-wk[0].kg;
+    h+='<section class="card"><div class="ctitle">Gewicht diese Woche</div><div class="kpis">'+
+      '<div class="kpi"><span>Zuletzt</span><b>'+fmtKg(wk[wk.length-1].kg)+'</b> <small class="hint">kg</small></div>'+
+      '<div class="kpi"><span>Veränderung</span><b>'+(wk.length>1?(dW>0?'+':dW<0?'−':'±')+fmtKg(Math.abs(dW))+' kg':'–')+'</b></div></div>'+
+      (wk.length<2?'<p class="hint" style="margin-bottom:0">Für eine Veränderung brauchst du mindestens zwei Einträge in der Woche.</p>':'')+'</section>';
+  }
+  // Hinweis fehlende Tage
+  var missing=past.filter(function(x){return x.t.kcal===0&&x.k!==today;}).length;
+  if(missing&&n)h+='<p class="hint wknote">An '+missing+' Tag'+(missing>1?'en':'')+' wurde nichts eingetragen. Diese Tage zählen bei den Durchschnitten nicht mit.</p>';
+  $('weekBox').innerHTML=h;
   renderWeight();
 }
 
@@ -860,10 +956,12 @@ function renderProfile(){
     '<div class="field"><label>Ziel</label><div class="seg" id="pGoal"><button data-v="lose">Abnehmen</button><button data-v="keep">Halten</button><button data-v="gain">Zunehmen</button></div></div>'+
     '<div id="pResult"></div>'+
     '<div class="field"><label>Eigenes Kalorienziel (optional)</label><input class="inp" id="pCustom" inputmode="numeric" placeholder="leer = automatisch" value="'+esc(p.custom||'')+'"></div>'+
+    '<div class="row2"><div class="field"><label>Wasserziel (Liter)</label><input class="inp" id="pWater" inputmode="decimal" value="'+String(waterGoal(p)/1000).replace('.',',')+'"></div>'+
+    '<div class="field"><label>Glasgröße (ml)</label><input class="inp" id="pGlass" inputmode="numeric" value="'+glassSize(p)+'"></div></div>'+
     '<button class="btn primary" id="pSave">'+(onboarding?'Los geht’s':'Speichern')+'</button>';
   function segInit(id,key){var b=el.querySelectorAll('#'+id+' button');b.forEach(function(x){x.classList.toggle('on',x.dataset.v===draft[key]);x.onclick=function(){draft[key]=x.dataset.v;b.forEach(function(y){y.classList.toggle('on',y===x);});upd();};});}
   segInit('pSex','sex');segInit('pGoal','goal');
-  function read(){draft.age=el.querySelector('#pAge').value.trim();draft.height=el.querySelector('#pHeight').value.trim();draft.weight=el.querySelector('#pWeight').value.trim();draft.activity=num(el.querySelector('#pAct').value);draft.custom=el.querySelector('#pCustom').value.trim();}
+  function read(){draft.age=el.querySelector('#pAge').value.trim();draft.height=el.querySelector('#pHeight').value.trim();draft.weight=el.querySelector('#pWeight').value.trim();draft.activity=num(el.querySelector('#pAct').value);draft.custom=el.querySelector('#pCustom').value.trim();var wl=num(el.querySelector('#pWater').value);draft.waterGoal=wl>0&&wl<=10?Math.round(wl*1000):2000;var gl=num(el.querySelector('#pGlass').value);draft.glass=gl>=50&&gl<=2000?Math.round(gl):250;}
   function valid(){return num(draft.age)>=14&&num(draft.age)<=100&&num(draft.height)>=120&&num(draft.height)<=230&&num(draft.weight)>=35&&num(draft.weight)<=300;}
   function upd(){
     read();var r=$('pResult');
