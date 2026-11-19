@@ -183,6 +183,25 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
 .scman{display:flex;gap:8px}
 .scman .inp{flex:1;background:rgba(255,255,255,.95);color:#0F1A14;border-color:transparent}
 .scman .btn{width:auto;padding:13px 18px}
+.wkpis{display:flex;gap:10px;justify-content:space-between;margin-bottom:14px}
+.wkpis .kpi b{font-size:22px;font-weight:800}
+.wkpis b.pos{color:var(--accent)}.wkpis b.neg{color:var(--danger)}
+.wseg{margin-bottom:10px}
+.wchartwrap{margin:0 -4px 14px}
+.wchart{width:100%;height:auto;display:block;overflow:visible}
+.wchart .grid{stroke:var(--line);stroke-width:1}
+.wchart .ylab,.wchart .xlab,.wchart .tlab{font-size:10px;fill:var(--muted);font-family:inherit;font-weight:600}
+.wchart .tline{stroke:var(--accent2);stroke-width:1.5;stroke-dasharray:4 4}
+.wchart .tlab{fill:var(--accent2)}
+.wchart .wline{fill:none;stroke:#12B76A;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.wchart .wdot{fill:var(--card);stroke:#12B76A;stroke-width:2;vector-effect:non-scaling-stroke}
+.wchart .wdot.last{fill:#12B76A}
+.wlist{margin-top:12px;max-height:260px;overflow-y:auto}
+.wrow{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);font-size:14px}
+.wrow span:first-child{flex:1;color:var(--muted);font-weight:500}
+.wrow .wd{font-size:12px;color:var(--muted);min-width:40px;text-align:right}
+.wrow b{min-width:72px;text-align:right}
+.wrow .x{color:var(--muted);font-size:18px;padding:0 4px}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
   padding:11px 18px;border-radius:14px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -221,15 +240,13 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
 
   <!-- FORTSCHRITT -->
   <section class="view" id="v-progress">
-    <div class="pagehead"><h1>Fortschritt</h1><p>Die letzten 7 Tage</p></div>
+    <div class="pagehead"><h1>Fortschritt</h1><p>Kalorien der letzten 7 Tage und dein Gewicht</p></div>
     <section class="card">
       <div class="kpis" id="kpis"></div>
       <div class="chart" id="chart"></div>
     </section>
-    <section class="card soon">
-      <div class="mealico">⚖️</div>
-      <div><b>Gewichtsverlauf</b><div class="hint">Kommt in einem der nächsten Schritte.</div></div>
-    </section>
+    <h2 class="sec">Gewicht</h2>
+    <section class="card" id="wCard"></section>
   </section>
 
   <!-- PROFIL -->
@@ -249,7 +266,7 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.3</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.4</p>
     </div>
   </section>
 </div>
@@ -727,6 +744,101 @@ function renderProgress(){
   $('chart').innerHTML='<div class="bars"><div class="goalline" style="bottom:'+(c.goal/max*100)+'%"></div>'+days.map(function(x){
     return '<div class="b '+(x.t===0?'empty':x.t>c.goal?'over':'')+'" style="height:'+(x.t/max*100)+'%"></div>';
   }).join('')+'</div><div class="labels">'+days.map(function(x){return '<span>'+x.d.toLocaleDateString('de-DE',{weekday:'short'}).replace('.','')+'</span>';}).join('')+'</div>';
+  renderWeight();
+}
+
+
+/* ---------- Gewicht ---------- */
+var wRange=90;
+function weightsSorted(){return (S.weights||[]).filter(function(w){return w&&w.date&&num(w.kg)>0;}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0;});}
+function fmtKg(v){return (Math.round(num(v)*10)/10).toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1});}
+function dLabel(ds,long){var d=new Date(ds+'T12:00:00');return d.toLocaleDateString('de-DE',long?{day:'numeric',month:'long',year:'numeric'}:{day:'numeric',month:'short'});}
+function setWeight(date,kg){
+  S.weights=(S.weights||[]).filter(function(w){return w.date!==date;});
+  S.weights.push({date:date,kg:Math.round(num(kg)*10)/10});
+  var ws=weightsSorted(),last=ws[ws.length-1];
+  var changed=false;
+  if(S.profile&&last&&last.date===date&&num(S.profile.weight)!==last.kg){S.profile.weight=String(last.kg);changed=true;}
+  save();return changed;
+}
+function weightChart(ws){
+  if(!ws.length)return '';
+  var W=320,H=150,pl=34,pr=10,pt=12,pb=22;
+  var t1=new Date(ws[ws.length-1].date+'T12:00:00').getTime(),t0=t1;
+  if(wRange){var from=addDays(new Date(),-wRange);from.setHours(12,0,0,0);var f=iso(from);ws=ws.filter(function(w){return w.date>=f;});}
+  if(!ws.length)return '<div class="empty">Keine Einträge in diesem Zeitraum.</div>';
+  t0=new Date(ws[0].date+'T12:00:00').getTime();t1=new Date(ws[ws.length-1].date+'T12:00:00').getTime();
+  var target=num(S.targetWeight);
+  var vals=ws.map(function(w){return w.kg;});if(target>0)vals.push(target);
+  var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+  var pad=Math.max(0.5,(mx-mn)*0.15);mn=Math.floor((mn-pad)*2)/2;mx=Math.ceil((mx+pad)*2)/2;
+  function X(ds){var t=new Date(ds+'T12:00:00').getTime();return t1===t0?(pl+(W-pl-pr)/2):pl+(t-t0)/(t1-t0)*(W-pl-pr);}
+  function Y(v){return pt+(mx-v)/(mx-mn)*(H-pt-pb);}
+  var pts=ws.map(function(w){return [X(w.date),Y(w.kg)];});
+  var line=pts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}).join(' ');
+  var area=pts.length>1?line+' L'+pts[pts.length-1][0].toFixed(1)+' '+(H-pb)+' L'+pts[0][0].toFixed(1)+' '+(H-pb)+' Z':'';
+  var g='<svg class="wchart" viewBox="0 0 '+W+' '+H+'"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12B76A" stop-opacity=".28"/><stop offset="1" stop-color="#12B76A" stop-opacity="0"/></linearGradient></defs>';
+  [mx,Math.round((mx+mn))/2,mn].forEach(function(v){var y=Y(v);g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" class="grid"/><text x="'+(pl-6)+'" y="'+(y+4)+'" class="ylab" text-anchor="end">'+fmtKg(v)+'</text>';});
+  if(target>0){var ty=Y(target);g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+ty+'" y2="'+ty+'" class="tline"/><text x="'+(W-pr)+'" y="'+(ty-4)+'" class="tlab" text-anchor="end">Ziel</text>';}
+  if(area)g+='<path d="'+area+'" fill="url(#wg)"/>';
+  if(pts.length>1)g+='<path d="'+line+'" class="wline"/>';
+  pts.forEach(function(p,i){if(pts.length<=31||i===pts.length-1)g+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(i===pts.length-1?4.5:3)+'" class="wdot'+(i===pts.length-1?' last':'')+'"/>';});
+  g+='<text x="'+pl+'" y="'+(H-5)+'" class="xlab">'+dLabel(ws[0].date)+'</text>';
+  if(ws.length>1)g+='<text x="'+(W-pr)+'" y="'+(H-5)+'" class="xlab" text-anchor="end">'+dLabel(ws[ws.length-1].date)+'</text>';
+  return g+'</svg>';
+}
+function renderWeight(){
+  var el=$('wCard');if(!el)return;
+  var ws=weightsSorted(),target=num(S.targetWeight);
+  if(!ws.length){
+    el.innerHTML='<div class="soon"><div class="mealico">⚖️</div><div><b>Noch kein Gewicht eingetragen</b><div class="hint">Trag dein Gewicht regelmäßig ein, am besten morgens nüchtern.</div></div></div><button class="btn primary" id="wAdd" style="margin-top:14px">Gewicht eintragen</button>';
+    $('wAdd').onclick=openWeightSheet;return;
+  }
+  var last=ws[ws.length-1],first=ws[0],diff=last.kg-first.kg;
+  var goal=S.profile&&S.profile.goal;
+  var good=goal==='lose'?diff<0:goal==='gain'?diff>0:Math.abs(diff)<1;
+  var diffTxt=(diff>0?'+':diff<0?'−':'±')+fmtKg(Math.abs(diff))+' kg';
+  var h='<div class="wkpis">'+
+    '<div class="kpi"><span>Aktuell</span><b>'+fmtKg(last.kg)+'</b> <small class="hint">kg</small></div>'+
+    '<div class="kpi"><span>Seit '+dLabel(first.date)+'</span><b class="'+(ws.length>1&&diff!==0?(good?'pos':'neg'):'')+'">'+diffTxt+'</b></div>'+
+    (target>0?'<div class="kpi"><span>Bis zum Ziel</span><b>'+fmtKg(Math.abs(last.kg-target))+'</b> <small class="hint">kg</small></div>':'')+
+    '</div>';
+  h+='<div class="seg wseg" id="wSeg">'+[[30,'30 Tage'],[90,'90 Tage'],[0,'Alles']].map(function(r){return '<button data-r="'+r[0]+'" class="'+(wRange===r[0]?'on':'')+'">'+r[1]+'</button>';}).join('')+'</div>';
+  h+='<div class="wchartwrap">'+weightChart(ws)+'</div>';
+  h+='<button class="btn primary" id="wAdd">Gewicht eintragen</button>';
+  var rev=ws.slice().reverse();
+  h+='<div class="wlist">'+rev.map(function(w,i){var prev=rev[i+1];var d=prev?w.kg-prev.kg:0;
+    return '<div class="wrow"><span>'+dLabel(w.date,true)+'</span><span class="wd">'+(prev&&d!==0?(d>0?'+':'−')+fmtKg(Math.abs(d)):'')+'</span><b>'+fmtKg(w.kg)+' kg</b><button class="x" data-wdel="'+w.date+'" aria-label="Löschen">×</button></div>';}).join('')+'</div>';
+  el.innerHTML=h;
+  $('wAdd').onclick=openWeightSheet;
+  el.querySelectorAll('#wSeg button').forEach(function(b){b.onclick=function(){wRange=+b.dataset.r;renderWeight();};});
+  el.querySelectorAll('[data-wdel]').forEach(function(b){b.onclick=function(){
+    var dt=b.dataset.wdel;
+    confirmSheet('Eintrag löschen?','Gewicht vom '+dLabel(dt,true)+' wird gelöscht.','Löschen',true).then(function(ok){if(!ok)return;S.weights=S.weights.filter(function(w){return w.date!==dt;});save();renderWeight();toast('Gelöscht');});
+  };});
+}
+function openWeightSheet(){
+  var ws=weightsSorted(),last=ws[ws.length-1];
+  var today=iso(new Date());
+  openSheet('<h3>Gewicht eintragen</h3>'+
+    '<div class="row2"><div class="field"><label>Datum</label><input class="inp" type="date" id="wDate" value="'+today+'" max="'+today+'"></div>'+
+    '<div class="field"><label>Gewicht in kg</label><input class="inp" id="wKg" inputmode="decimal" placeholder="'+(last?fmtKg(last.kg):'80,0')+'"></div></div>'+
+    '<div class="field"><label>Zielgewicht in kg (optional)</label><input class="inp" id="wTarget" inputmode="decimal" placeholder="z. B. 75" value="'+(num(S.targetWeight)>0?fmtKg(S.targetWeight):'')+'"></div>'+
+    '<p class="hint" style="margin-top:-2px">Tipp: Wiege dich möglichst immer zur gleichen Zeit, z. B. morgens nach dem Aufstehen. Das neueste Gewicht übernimmt Kalo auch ins Profil, damit dein Tagesziel passt.</p>'+
+    '<button class="btn primary" id="wSave">Speichern</button><button class="btn ghost" id="wCancel">Abbrechen</button>',function(s){
+    var kgEl=s.querySelector('#wKg');setTimeout(function(){try{kgEl.focus();}catch(e){}},300);
+    s.querySelector('#wCancel').onclick=closeSheet;
+    s.querySelector('#wSave').onclick=function(){
+      var kg=num(kgEl.value),dt=s.querySelector('#wDate').value||today,tg=s.querySelector('#wTarget').value.trim();
+      if(tg!==''&&!(num(tg)>=35&&num(tg)<=300)){toast('Bitte ein gültiges Zielgewicht eingeben');return;}
+      S.targetWeight=tg===''?null:Math.round(num(tg)*10)/10;
+      if(kgEl.value.trim()===''){save();closeSheet();renderWeight();toast('Ziel gespeichert');return;}
+      if(!(kg>=35&&kg<=300)){toast('Bitte ein gültiges Gewicht eingeben');kgEl.focus();return;}
+      if(dt>today)dt=today;
+      var changed=setWeight(dt,kg);closeSheet();renderWeight();
+      toast(changed?'Gespeichert – Tagesziel angepasst':'Gespeichert');
+    };
+  });
 }
 
 /* ---------- Profil ---------- */
@@ -771,7 +883,9 @@ function renderProfile(){
   upd();
   el.querySelector('#pSave').onclick=function(){
     read();if(!valid()){toast('Bitte Alter, Größe und Gewicht prüfen');return;}
-    S.profile=draft;save();toast('Profil gespeichert');
+    S.profile=draft;
+    var wsx=weightsSorted(),lw=wsx[wsx.length-1];if(!lw||lw.kg!==Math.round(num(draft.weight)*10)/10){S.weights=(S.weights||[]).filter(function(w){return w.date!==iso(new Date());});S.weights.push({date:iso(new Date()),kg:Math.round(num(draft.weight)*10)/10});}
+    save();toast('Profil gespeichert');
     if(onboarding){document.querySelector('.tabbar').style.display='flex';show('diary');}else renderProfile();
   };
   $('lastBackup').textContent=S.lastBackup?'Letztes Backup: '+new Date(S.lastBackup).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'}):'Noch kein Backup gemacht.';
