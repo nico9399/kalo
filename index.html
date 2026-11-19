@@ -152,6 +152,19 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
 .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .kpi span{display:block;font-size:12px;color:var(--muted);font-weight:600}.kpi b{font-size:22px;font-weight:800}
 
+.reslist{display:flex;flex-direction:column;gap:6px}
+.res{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:14px;background:var(--bg);text-align:left;width:100%}
+.res:active{transform:scale(.99)}
+.res .rt{min-width:0;flex:1}
+.res .n{font-weight:600;font-size:15px;line-height:1.3}
+.res .m{font-size:12px;color:var(--muted);margin-top:2px}
+.res .plus{color:var(--accent);font-weight:800;font-size:22px}
+.sechead{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;margin:12px 4px 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:-2px 0 12px}
+.chips button{padding:8px 12px;border-radius:12px;background:var(--bg);border:1.5px solid var(--line);font-weight:600;font-size:14px}
+.inp.big{font-size:24px;font-weight:700;text-align:center}
+.credits{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;margin:6px 8px}
+.credits a{color:var(--muted)}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
   padding:11px 18px;border-radius:14px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -218,7 +231,7 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="hint" style="text-align:center">Kalo · Version 0.1</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL).</p><p class="hint" style="text-align:center">Kalo · Version 0.2</p>
     </div>
   </section>
 </div>
@@ -360,29 +373,191 @@ function entryActions(meal,id){
   var f=findEntry(meal,id);if(!f)return;
   openSheet('<h3>'+esc(f.e.name)+'</h3><p class="hint" style="margin-top:-6px">'+fmt(num(f.e.kcal))+' kcal'+(f.e.amount?' · '+esc(f.e.amount):'')+'</p>'+
     '<button class="btn ghost" id="aEdit">Bearbeiten</button><button class="btn ghost" id="aFav">Als Favorit speichern</button><button class="btn danger" id="aDel">Löschen</button>',function(s){
-    s.querySelector('#aEdit').onclick=function(){openAdd(meal,f.e);};
+    s.querySelector('#aEdit').onclick=function(){
+      if(f.e.per100)openPortion({name:f.e.name,brand:f.e.brand,src:f.e.src,per100:f.e.per100,grams:f.e.grams,serving:f.e.serving},meal,f.e);
+      else openManual(meal,f.e);
+    };
     s.querySelector('#aFav').onclick=function(){addFav(f.e);closeSheet();toast('Als Favorit gespeichert');};
     s.querySelector('#aDel').onclick=function(){f.list.splice(f.i,1);save();closeSheet();renderDiary();toast('Gelöscht');};
   });
 }
 
 function addFav(e){
-  var exists=S.favs.some(function(x){return x.name.toLowerCase()===String(e.name).toLowerCase()&&num(x.kcal)===num(e.kcal);});
-  if(!exists){S.favs.unshift({id:uid(),name:e.name,amount:e.amount||'',kcal:num(e.kcal),p:num(e.p),c:num(e.c),f:num(e.f)});save();}
+  var exists=S.favs.some(function(x){return x.name.toLowerCase()===String(e.name).toLowerCase()&&(e.per100?!!x.per100:num(x.kcal)===num(e.kcal));});
+  if(exists)return;
+  var fv={id:uid(),name:e.name,amount:e.amount||'',kcal:num(e.kcal),p:num(e.p),c:num(e.c),f:num(e.f)};
+  if(e.per100){fv.per100=e.per100;fv.grams=e.grams;fv.brand=e.brand||'';fv.src=e.src||'';fv.serving=e.serving||0;}
+  S.favs.unshift(fv);save();
 }
 
-function openAdd(meal,edit){
-  var mealName={};MEALS.forEach(function(m){mealName[m[0]]=m[1];});
-  var sel=meal;
-  var favHtml='';
-  if(!edit&&S.favs.length){
-    favHtml='<div class="field"><input class="inp" id="favSearch" placeholder="Favoriten durchsuchen …" autocomplete="off"></div><div class="favlist" id="favList"></div><div class="divider">oder neu eintragen</div>';
+/* ---------- Lebensmittel-Daten ---------- */
+function norm(s){return String(s||'').toLowerCase().replace(/ß/g,'ss').normalize('NFD').replace(/[̀-ͯ]/g,'');}
+var BLS=null,blsLoading=null;
+function loadBLS(){
+  if(BLS)return Promise.resolve(BLS);
+  if(blsLoading)return blsLoading;
+  blsLoading=fetch('bls.json').then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(d){
+    BLS=d.map(function(x){var n=norm(x[0]);return {name:x[0],n:n,c:n.replace(/[^a-z0-9]/g,''),k:x[1],p:x[2],ch:x[3],f:x[4]};});return BLS;
+  }).catch(function(e){blsLoading=null;throw e;});
+  return blsLoading;
+}
+function searchBLS(q){
+  var SYN={ei:'huhnerei',eier:'huhnerei',hahnchen:'hahnchen',quark:'speisequark',joghurt:'joghurt'};var toks=norm(q).split(/[\s,]+/).filter(Boolean).map(function(t){return SYN[t]||t;});if(!toks.length||!BLS)return [];
+  var res=[];
+  for(var i=0;i<BLS.length;i++){
+    var it=BLS[i],sc=0,ok=true;
+    for(var j=0;j<toks.length;j++){
+      var t=toks[j],pos=it.n.indexOf(t);
+      if(pos<0){var tc=t.replace(/[^a-z0-9]/g,''),cp=it.c.indexOf(tc);if(cp<0){ok=false;break;}sc+=(cp===0&&j===0)?95:5;if(cp+tc.length===it.c.length||it.n.replace(/[^a-z0-9 ]/g,'').split(' ').join('').length===cp+tc.length)sc+=0;var wl=it.n.split(/[\s,]+/);var acc='';for(var w=0;w<wl.length;w++){acc+=wl[w].replace(/[^a-z0-9]/g,'');if(acc.length===cp+tc.length){sc+=25;break;}if(acc.length>cp+tc.length)break;}continue;}
+      if(pos===0)sc+=j===0?100:30;else if(/[\s\/(,-]/.test(it.n.charAt(pos-1)))sc+=30;
+      var end=pos+t.length;if(end===it.n.length||/[\s,\/)]/.test(it.n.charAt(end)))sc+=25;else if(pos>0&&/[a-z]/.test(it.n.charAt(pos-1))&&(end===it.n.length||/[\s,\/)]/.test(it.n.charAt(end))))sc+=15;
+    }
+    if(!ok)continue;
+    if(/\broh\b/.test(it.n))sc+=8;
+    sc-=it.n.length/3;
+    res.push([sc,it]);
   }
-  var e=edit||{};
+  res.sort(function(a,b){return b[0]-a[0];});
+  return res.slice(0,40).map(function(x){var it=x[1];return {name:it.name,src:'bls',per100:{k:it.k,p:it.p,c:it.ch,f:it.f}};});
+}
+function offPer100(nu){
+  var k=nu['energy-kcal_100g'];if(k==null&&nu['energy-kj_100g']!=null)k=nu['energy-kj_100g']/4.184;if(k==null&&nu.energy_100g!=null)k=nu.energy_100g/4.184;
+  if(k==null)return null;
+  return {k:Math.round(num(k)),p:+num(nu.proteins_100g).toFixed(1),c:+num(nu.carbohydrates_100g).toFixed(1),f:+num(nu.fat_100g).toFixed(1)};
+}
+function searchOFF(q){
+  var url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=24&sort_by=unique_scans_n&fields=code,product_name,product_name_de,brands,nutriments,serving_quantity';
+  return fetch(url).then(function(r){if(r.status===429)throw new Error('limit');if(!r.ok)throw new Error('http');return r.json();}).then(function(j){
+    return (j.products||[]).map(function(p){
+      var per=offPer100(p.nutriments||{});var name=(p.product_name_de||p.product_name||'').trim();
+      if(!per||!name)return null;
+      return {name:name,brand:(p.brands||'').split(',')[0].trim(),src:'off',code:p.code,per100:per,serving:num(p.serving_quantity)||0};
+    }).filter(Boolean);
+  });
+}
+function recentFoods(){
+  var keys=Object.keys(S.days).sort().reverse(),seen={},out=[];
+  for(var i=0;i<keys.length&&out.length<15;i++){var d=S.days[keys[i]];
+    MEALS.forEach(function(m){(d[m[0]]||[]).slice().reverse().forEach(function(e){var k=e.name.toLowerCase();if(!seen[k]&&out.length<15){seen[k]=1;out.push(e);}});});}
+  return out;
+}
+
+/* ---------- Hinzufügen: Suche ---------- */
+var MEALSHORT={breakfast:'Frühstück',lunch:'Mittag',dinner:'Abend',snack:'Snacks'};
+function foodRow(f,idx,star){
+  var sub=f.per100?(fmt(f.per100.k)+' kcal / 100 g'):(fmt(f.kcal)+' kcal'+(f.amount?' · '+esc(f.amount):''));
+  if(f.brand)sub=esc(f.brand)+' · '+sub;
+  return '<button class="res" data-i="'+idx+'"><div class="rt"><div class="n">'+(star?'⭐ ':'')+esc(f.name)+'</div><div class="m">'+sub+'</div></div><span class="plus">+</span></button>';
+}
+function openAdd(meal){
+  var sel=meal,list=[],timer=null,offQ='';
   openSheet(
-    '<h3>'+(edit?'Eintrag bearbeiten':'Hinzufügen')+'</h3>'+
-    '<div class="field"><div class="seg" id="mealSeg">'+MEALS.map(function(m){return '<button data-m="'+m[0]+'" class="'+(m[0]===sel?'on':'')+'">'+m[1].replace('Mittagessen','Mittag').replace('Abendessen','Abend')+'</button>';}).join('')+'</div></div>'+
-    favHtml+
+    '<h3>Hinzufügen</h3>'+
+    '<div class="field"><div class="seg" id="mealSeg">'+MEALS.map(function(m){return '<button data-m="'+m[0]+'" class="'+(m[0]===sel?'on':'')+'">'+MEALSHORT[m[0]]+'</button>';}).join('')+'</div></div>'+
+    '<div class="field searchwrap"><input class="inp" id="q" type="search" placeholder="Lebensmittel suchen …" autocomplete="off" enterkeyhint="search"></div>'+
+    '<div id="results" class="reslist"></div>'+
+    '<div id="offBox"></div>'+
+    '<button class="btn ghost" id="manualBtn" style="margin-top:12px">Manuell eintragen</button>',
+    function(s){
+      var qEl=s.querySelector('#q'),resEl=s.querySelector('#results'),offBox=s.querySelector('#offBox');
+      s.querySelectorAll('#mealSeg button').forEach(function(b){b.onclick=function(){sel=b.dataset.m;s.querySelectorAll('#mealSeg button').forEach(function(x){x.classList.toggle('on',x===b);});};});
+      s.querySelector('#manualBtn').onclick=function(){openManual(sel,null,qEl.value.trim());};
+      function bind(){
+        resEl.querySelectorAll('.res').forEach(function(el){el.onclick=function(){pick(list[+el.dataset.i]);};});
+      }
+      function pick(f){
+        if(f.per100)openPortion({name:f.name,brand:f.brand,src:f.src,per100:f.per100,grams:f.grams||(f.serving||100),serving:f.serving||0},sel,null);
+        else{ensureDay(iso(cur))[sel].push({id:uid(),name:f.name,amount:f.amount||'',kcal:num(f.kcal),p:num(f.p),c:num(f.c),f:num(f.f)});save();renderDiary();toast(f.name+' → '+MEALSHORT[sel]);}
+      }
+      function section(title,items,star){
+        if(!items.length)return '';
+        var h='<div class="sechead">'+title+'</div>';
+        items.forEach(function(f){list.push(f);h+=foodRow(f,list.length-1,star);});
+        return h;
+      }
+      function render(){
+        var q=qEl.value.trim();list=[];var h='';
+        if(!q){
+          h+=section('Favoriten',S.favs,true);
+          h+=section('Zuletzt gegessen',recentFoods().map(function(e){return e.per100?{name:e.name,brand:e.brand,src:e.src,per100:e.per100,grams:e.grams,serving:e.serving}:e;}),false);
+          if(!h)h='<div class="empty">Tippe oben, um z. B. „Banane“ oder „Haferflocken“ zu suchen.</div>';
+          resEl.innerHTML=h;bind();offBox.innerHTML='';return;
+        }
+        var nq=norm(q);
+        h+=section('Favoriten',S.favs.filter(function(f){return norm(f.name).indexOf(nq)>-1;}),true);
+        if(!BLS){resEl.innerHTML=h+'<div class="empty">Lebensmittel werden geladen …</div>';bind();
+          loadBLS().then(render).catch(function(){resEl.innerHTML=h+'<div class="empty">Lebensmittelliste konnte nicht geladen werden. Bist du online?</div>';bind();});}
+        else{
+          var b=searchBLS(q);
+          h+=section('Lebensmittel',b,false);
+          if(!b.length)h+='<div class="empty">Nichts gefunden. Probier ein anderes Wort oder die Markenprodukte.</div>';
+          resEl.innerHTML=h;bind();
+        }
+        if(offQ!==q){offQ='';offBox.innerHTML='<button class="btn ghost" id="offBtn" style="margin-top:10px">🔎 „'+esc(q)+'“ in Markenprodukten suchen</button>';
+          offBox.querySelector('#offBtn').onclick=function(){runOFF(q);};}
+      }
+      function runOFF(q){
+        offQ=q;offBox.innerHTML='<div class="empty">Suche in Open Food Facts …</div>';
+        searchOFF(q).then(function(items){
+          if(qEl.value.trim()!==q)return;
+          if(!items.length){offBox.innerHTML='<div class="empty">Keine Markenprodukte gefunden.</div>';return;}
+          var start=list.length,h='<div class="sechead">Markenprodukte</div>';
+          items.forEach(function(f){list.push(f);h+=foodRow(f,list.length-1,false);});
+          offBox.innerHTML=h;
+          offBox.querySelectorAll('.res').forEach(function(el){el.onclick=function(){pick(list[+el.dataset.i]);};});
+        }).catch(function(e){offQ='';offBox.innerHTML='<div class="empty">'+(e&&e.message==='limit'?'Zu viele Suchen in kurzer Zeit. Bitte kurz warten und erneut versuchen.':'Suche fehlgeschlagen. Bist du online?')+'</div>';});
+      }
+      qEl.oninput=function(){clearTimeout(timer);timer=setTimeout(render,150);};
+      qEl.onkeydown=function(e){if(e.key==='Enter'){qEl.blur();}};
+      render();loadBLS().catch(function(){});
+      setTimeout(function(){try{qEl.focus();}catch(e){}},300);
+    });
+}
+
+/* ---------- Portion wählen ---------- */
+function openPortion(food,meal,edit){
+  var sel=meal,g=num(food.grams)||100;
+  var srcName=food.src==='bls'?'Bundeslebensmittelschlüssel':food.src==='off'?'Open Food Facts':'Eigener Eintrag';
+  var chips=[50,100,150,200,250];
+  var P=food.per100;
+  openSheet(
+    '<h3>'+esc(food.name)+'</h3><p class="hint" style="margin-top:-8px">'+(food.brand?esc(food.brand)+' · ':'')+srcName+'</p>'+
+    '<div class="field"><label>Menge in Gramm (bzw. ml)</label><input class="inp big" id="ptg" inputmode="decimal" value="'+r0(g)+'"></div>'+
+    '<div class="chips">'+(food.serving?'<button data-g="'+food.serving+'">1 Portion ('+r0(food.serving)+' g)</button>':'')+chips.map(function(c){return '<button data-g="'+c+'">'+c+' g</button>';}).join('')+'</div>'+
+    '<div class="result" id="ptres"></div>'+
+    (edit?'':'<label class="check"><input type="checkbox" id="ptFav"> Als Favorit merken</label>')+
+    '<button class="btn primary" id="ptSave">'+(edit?'Speichern':'Hinzufügen')+'</button>'+
+    '<button class="btn ghost" id="ptBack">'+(edit?'Abbrechen':'Zurück zur Suche')+'</button>',
+    function(s){
+      var gEl=s.querySelector('#ptg');
+      function calc(){
+        g=num(gEl.value);var x=g/100;
+        s.querySelector('#ptres').innerHTML='<div class="big">'+fmt(P.k*x)+' kcal</div>'+
+          '<div class="rl"><span>Eiweiß · Kohlenh. · Fett</span><b>'+(P.p*x).toFixed(1).replace('.',',')+' · '+(P.c*x).toFixed(1).replace('.',',')+' · '+(P.f*x).toFixed(1).replace('.',',')+' g</b></div>'+
+          '<div class="hint">Pro 100 g: '+fmt(P.k)+' kcal · E '+String(P.p).replace('.',',')+' · K '+String(P.c).replace('.',',')+' · F '+String(P.f).replace('.',',')+'</div>';
+      }
+      gEl.oninput=calc;calc();
+      s.querySelectorAll('.chips button').forEach(function(b){b.onclick=function(){gEl.value=b.dataset.g;calc();};});
+      s.querySelector('#ptBack').onclick=function(){if(edit)closeSheet();else openAdd(sel);};
+      s.querySelector('#ptSave').onclick=function(){
+        if(!(g>0)){toast('Bitte eine Menge eingeben');gEl.focus();return;}
+        var x=g/100;
+        var item={id:edit?edit.id:uid(),name:food.name,brand:food.brand||'',src:food.src||'',per100:P,grams:g,serving:food.serving||0,
+          amount:fmt(g)+' g',kcal:Math.round(P.k*x),p:+(P.p*x).toFixed(1),c:+(P.c*x).toFixed(1),f:+(P.f*x).toFixed(1)};
+        if(edit){var fe=findEntry(sel,edit.id);if(fe)fe.list[fe.i]=item;}
+        else ensureDay(iso(cur))[sel].push(item);
+        if(!edit&&s.querySelector('#ptFav').checked)addFav(item);
+        save();closeSheet();renderDiary();toast(edit?'Gespeichert':food.name+' → '+MEALSHORT[sel]);
+      };
+    });
+}
+
+/* ---------- Manuell eintragen ---------- */
+function openManual(meal,edit,prefill){
+  var sel=meal,e=edit||{name:prefill||''};
+  openSheet(
+    '<h3>'+(edit?'Eintrag bearbeiten':'Manuell eintragen')+'</h3>'+
+    (edit?'':'<div class="field"><div class="seg" id="mealSeg">'+MEALS.map(function(m){return '<button data-m="'+m[0]+'" class="'+(m[0]===sel?'on':'')+'">'+MEALSHORT[m[0]]+'</button>';}).join('')+'</div></div>')+
     '<div class="field"><label>Lebensmittel *</label><input class="inp" id="fName" placeholder="z. B. Haferflocken mit Milch" value="'+esc(e.name||'')+'" autocomplete="off"></div>'+
     '<div class="row2"><div class="field"><label>Menge</label><input class="inp" id="fAmount" placeholder="z. B. 150 g" value="'+esc(e.amount||'')+'"></div>'+
     '<div class="field"><label>Kalorien (kcal) *</label><input class="inp" id="fKcal" inputmode="decimal" placeholder="0" value="'+(e.kcal!=null?esc(e.kcal):'')+'"></div></div>'+
@@ -391,33 +566,19 @@ function openAdd(meal,edit){
     '<div class="field"><label>Fett g</label><input class="inp" id="fF" inputmode="decimal" placeholder="0" value="'+(e.f?esc(e.f):'')+'"></div></div>'+
     (edit?'':'<label class="check"><input type="checkbox" id="fFav"> Als Favorit merken</label>')+
     '<button class="btn primary" id="fSave">'+(edit?'Speichern':'Hinzufügen')+'</button>'+
-    (edit?'':'<p class="hint" style="text-align:center;margin-bottom:0">Lebensmittelsuche und Barcode-Scanner kommen in den nächsten Schritten.</p>'),
+    '<button class="btn ghost" id="fBack">'+(edit?'Abbrechen':'Zurück zur Suche')+'</button>',
     function(s){
       s.querySelectorAll('#mealSeg button').forEach(function(b){b.onclick=function(){sel=b.dataset.m;s.querySelectorAll('#mealSeg button').forEach(function(x){x.classList.toggle('on',x===b);});};});
-      function renderFavs(q){
-        var l=s.querySelector('#favList');if(!l)return;q=(q||'').toLowerCase();
-        var items=S.favs.filter(function(f){return !q||f.name.toLowerCase().indexOf(q)>-1;});
-        l.innerHTML=items.length?items.map(function(f){return '<div class="fav" data-fid="'+f.id+'"><div><div class="n">'+esc(f.name)+'</div><div class="m">'+fmt(f.kcal)+' kcal'+(f.amount?' · '+esc(f.amount):'')+'</div></div><span class="plus">+</span><button class="x" data-del="'+f.id+'" aria-label="Favorit entfernen">×</button></div>';}).join(''):'<div class="empty">Kein Favorit gefunden</div>';
-        l.querySelectorAll('.fav').forEach(function(el){el.onclick=function(ev){
-          if(ev.target.dataset.del){ev.stopPropagation();S.favs=S.favs.filter(function(x){return x.id!==ev.target.dataset.del;});save();renderFavs(s.querySelector('#favSearch').value);return;}
-          var f=S.favs.filter(function(x){return x.id===el.dataset.fid;})[0];if(!f)return;
-          ensureDay(iso(cur))[sel].push({id:uid(),name:f.name,amount:f.amount,kcal:f.kcal,p:f.p,c:f.c,f:f.f});
-          save();renderDiary();toast(f.name+' → '+mealName[sel]);
-        };});
-      }
-      if(s.querySelector('#favSearch')){renderFavs('');s.querySelector('#favSearch').oninput=function(){renderFavs(this.value);};}
+      s.querySelector('#fBack').onclick=function(){if(edit)closeSheet();else openAdd(sel);};
       s.querySelector('#fSave').onclick=function(){
-        var name=s.querySelector('#fName').value.trim();var kcal=num(s.querySelector('#fKcal').value);
+        var name=s.querySelector('#fName').value.trim();var kv=s.querySelector('#fKcal').value.trim();
         if(!name){toast('Bitte einen Namen eingeben');s.querySelector('#fName').focus();return;}
-        if(!(kcal>=0)||s.querySelector('#fKcal').value.trim()===''){toast('Bitte Kalorien eingeben');s.querySelector('#fKcal').focus();return;}
-        var item={id:edit?edit.id:uid(),name:name,amount:s.querySelector('#fAmount').value.trim(),kcal:kcal,
+        if(kv===''){toast('Bitte Kalorien eingeben');s.querySelector('#fKcal').focus();return;}
+        var item={id:edit?edit.id:uid(),name:name,amount:s.querySelector('#fAmount').value.trim(),kcal:num(kv),
           p:num(s.querySelector('#fP').value),c:num(s.querySelector('#fC').value),f:num(s.querySelector('#fF').value)};
-        var day=ensureDay(iso(cur));
-        if(edit){
-          var f=findEntry(meal,edit.id);if(f)f.list.splice(f.i,1);
-        }
-        day[sel].push(item);
-        if(!edit&&s.querySelector('#fFav')&&s.querySelector('#fFav').checked)addFav(item);
+        if(edit){var fe=findEntry(sel,edit.id);if(fe)fe.list[fe.i]=item;}
+        else ensureDay(iso(cur))[sel].push(item);
+        if(!edit&&s.querySelector('#fFav').checked)addFav(item);
         save();closeSheet();renderDiary();toast(edit?'Gespeichert':'Hinzugefügt');
       };
     });
