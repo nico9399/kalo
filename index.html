@@ -165,6 +165,24 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
 .inp.big{font-size:24px;font-weight:700;text-align:center}
 .credits{font-size:12px;color:var(--muted);text-align:center;line-height:1.5;margin:6px 8px}
 .credits a{color:var(--muted)}
+.searchwrap{display:flex;gap:8px}
+.searchwrap .inp{flex:1}
+.scanbtn{flex:none;width:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;display:grid;place-items:center}
+.scanbtn svg{width:24px;height:24px}
+.scanner{position:fixed;inset:0;background:#000;z-index:80;color:#fff}
+.scanner video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scframe{position:absolute;left:50%;top:42%;width:78%;max-width:360px;aspect-ratio:1.6;transform:translate(-50%,-50%);border-radius:22px;box-shadow:0 0 0 9999px rgba(0,0,0,.45);border:3px solid rgba(255,255,255,.9)}
+.scframe span{position:absolute;left:8%;right:8%;top:50%;height:2px;background:#12B76A;box-shadow:0 0 12px #12B76A;animation:scan 1.8s ease-in-out infinite}
+@keyframes scan{0%,100%{transform:translateY(-40px)}50%{transform:translateY(40px)}}
+.sctop{position:absolute;top:0;left:0;right:0;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:12px}
+.scclose{width:40px;height:40px;border-radius:14px;background:rgba(255,255,255,.18);color:#fff;font-size:18px;font-weight:700}
+.sctitle{font-weight:700;font-size:17px}
+.scbottom{position:absolute;left:0;right:0;bottom:0;padding:16px 16px calc(18px + env(safe-area-inset-bottom));background:linear-gradient(transparent,rgba(0,0,0,.85) 30%)}
+.scmsg{text-align:center;font-weight:600;font-size:15px;margin-bottom:12px;line-height:1.4}
+.scmsg .btn.ghost{color:var(--text)}
+.scman{display:flex;gap:8px}
+.scman .inp{flex:1;background:rgba(255,255,255,.95);color:#0F1A14;border-color:transparent}
+.scman .btn{width:auto;padding:13px 18px}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
   padding:11px 18px;border-radius:14px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -231,7 +249,7 @@ h2.sec{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL).</p><p class="hint" style="text-align:center">Kalo · Version 0.2</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.3</p>
     </div>
   </section>
 </div>
@@ -456,7 +474,7 @@ function openAdd(meal){
   openSheet(
     '<h3>Hinzufügen</h3>'+
     '<div class="field"><div class="seg" id="mealSeg">'+MEALS.map(function(m){return '<button data-m="'+m[0]+'" class="'+(m[0]===sel?'on':'')+'">'+MEALSHORT[m[0]]+'</button>';}).join('')+'</div></div>'+
-    '<div class="field searchwrap"><input class="inp" id="q" type="search" placeholder="Lebensmittel suchen …" autocomplete="off" enterkeyhint="search"></div>'+
+    '<div class="field searchwrap"><input class="inp" id="q" type="search" placeholder="Lebensmittel suchen …" autocomplete="off" enterkeyhint="search"><button class="scanbtn" id="scanBtn" aria-label="Barcode scannen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg></button></div>'+
     '<div id="results" class="reslist"></div>'+
     '<div id="offBox"></div>'+
     '<button class="btn ghost" id="manualBtn" style="margin-top:12px">Manuell eintragen</button>',
@@ -464,6 +482,7 @@ function openAdd(meal){
       var qEl=s.querySelector('#q'),resEl=s.querySelector('#results'),offBox=s.querySelector('#offBox');
       s.querySelectorAll('#mealSeg button').forEach(function(b){b.onclick=function(){sel=b.dataset.m;s.querySelectorAll('#mealSeg button').forEach(function(x){x.classList.toggle('on',x===b);});};});
       s.querySelector('#manualBtn').onclick=function(){openManual(sel,null,qEl.value.trim());};
+      s.querySelector('#scanBtn').onclick=function(){openScanner(sel);};
       function bind(){
         resEl.querySelectorAll('.res').forEach(function(el){el.onclick=function(){pick(list[+el.dataset.i]);};});
       }
@@ -514,6 +533,115 @@ function openAdd(meal){
       render();loadBLS().catch(function(){});
       setTimeout(function(){try{qEl.focus();}catch(e){}},300);
     });
+}
+
+/* ---------- Barcode-Scanner ---------- */
+var zxingLoading=null;
+function loadZXing(){
+  if(window.ZXing)return Promise.resolve();
+  if(zxingLoading)return zxingLoading;
+  zxingLoading=new Promise(function(res,rej){var sc=document.createElement('script');sc.src='zxing.min.js';sc.onload=res;sc.onerror=function(){zxingLoading=null;rej(new Error('lib'));};document.head.appendChild(sc);});
+  return zxingLoading;
+}
+function lookupBarcode(code){
+  if(OFFCACHE['#'+code])return Promise.resolve(OFFCACHE['#'+code]);
+  return fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=code,product_name,product_name_de,brands,nutriments,serving_quantity')
+    .then(function(r){if(r.status===404)return {status:0};if(!r.ok)throw new Error('http');return r.json();})
+    .then(function(j){
+      if(!j||!j.product)return {notFound:true};
+      var p=j.product,per=offPer100(p.nutriments||{}),name=(p.product_name_de||p.product_name||'').trim();
+      var res={name:name||('Produkt '+code),brand:(p.brands||'').split(',')[0].trim(),src:'off',code:code,per100:per,serving:num(p.serving_quantity)||0,noNutri:!per};
+      OFFCACHE['#'+code]=res;return res;
+    });
+}
+function openScanner(meal){
+  var sel=meal,reader=null,stream=null,done=false,rafId=null;
+  closeSheet();
+  var ov=document.createElement('div');ov.className='scanner';
+  ov.innerHTML='<video id="scVideo" playsinline muted></video><div class="scframe"><span></span></div>'+
+    '<div class="sctop"><button class="scclose" id="scClose" aria-label="Schließen">✕</button><div class="sctitle">Barcode scannen</div></div>'+
+    '<div class="scbottom"><div class="scmsg" id="scMsg">Kamera wird gestartet …</div>'+
+    '<div class="scman"><input class="inp" id="scCode" inputmode="numeric" placeholder="oder Nummer eintippen"><button class="btn primary" id="scGo">Suchen</button></div></div>';
+  document.body.appendChild(ov);document.body.style.overflow='hidden';
+  var video=ov.querySelector('#scVideo'),msg=ov.querySelector('#scMsg');
+  function stop(){
+    done=true;
+    try{if(reader)reader.reset();}catch(e){}
+    if(rafId)cancelAnimationFrame(rafId);
+    if(stream)stream.getTracks().forEach(function(t){t.stop();});
+    try{video.srcObject=null;}catch(e){}
+  }
+  function close(){stop();ov.remove();document.body.style.overflow='';}
+  ov.querySelector('#scClose').onclick=function(){close();openAdd(sel);};
+  function found(code){
+    if(done)return;stop();
+    code=String(code).replace(/\D/g,'');
+    msg.textContent='Gefunden: '+code+' – suche Produkt …';
+    lookupBarcode(code).then(function(f){
+      if(f.notFound){
+        msg.innerHTML='Produkt '+esc(code)+' ist bei Open Food Facts nicht bekannt.<br><button class="btn ghost" id="scMan" style="margin-top:10px">Manuell eintragen</button><button class="btn ghost" id="scAgain">Nochmal scannen</button>';
+        ov.querySelector('#scMan').onclick=function(){close();openManual(sel,null,'');};
+        ov.querySelector('#scAgain').onclick=function(){close();openScanner(sel);};
+        return;
+      }
+      if(f.noNutri){
+        msg.innerHTML=esc(f.name)+' hat keine Nährwerte bei Open Food Facts.<br><button class="btn ghost" id="scMan" style="margin-top:10px">Manuell eintragen</button>';
+        ov.querySelector('#scMan').onclick=function(){close();openManual(sel,null,f.name);};
+        return;
+      }
+      close();
+      openPortion({name:f.name,brand:f.brand,src:'off',per100:f.per100,grams:f.serving||100,serving:f.serving},sel,null);
+    }).catch(function(){
+      msg.innerHTML='Open Food Facts antwortet gerade nicht. Bist du online?<br><button class="btn ghost" id="scAgain" style="margin-top:10px">Nochmal versuchen</button>';
+      ov.querySelector('#scAgain').onclick=function(){done=false;found(code);};
+    });
+  }
+  ov.querySelector('#scGo').onclick=function(){var c=ov.querySelector('#scCode').value.replace(/\D/g,'');if(c.length<8){toast('Bitte die Nummer unter dem Barcode eingeben');return;}found(c);};
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg.textContent='Kamera nicht verfügbar. Gib die Nummer unter dem Barcode ein.';return;}
+  var constraints={video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false};
+  // 1) Natives BarcodeDetector (z. B. Android Chrome), sonst 2) ZXing
+  var native=('BarcodeDetector' in window&&window.BarcodeDetector.getSupportedFormats)?window.BarcodeDetector.getSupportedFormats().then(function(f){return f.indexOf('ean_13')>-1;}).catch(function(){return false;}):Promise.resolve(false);
+  native.then(function(ok){if(done)return;if(ok)startNative();else startZXing();});
+  function startNative(){
+    var det=new window.BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+    navigator.mediaDevices.getUserMedia(constraints).then(function(st){
+      if(done){st.getTracks().forEach(function(t){t.stop();});return;}
+      stream=st;video.srcObject=st;video.play();msg.textContent='Halte den Barcode in den Rahmen.';
+      var busy=false,fails=0;
+      (function loop(){if(done)return;rafId=requestAnimationFrame(loop);if(busy||video.readyState<2)return;busy=true;
+        det.detect(video).then(function(r){busy=false;if(r&&r.length)found(r[0].rawValue);}).catch(function(){busy=false;if(++fails>20){cancelAnimationFrame(rafId);st.getTracks().forEach(function(t){t.stop();});stream=null;startZXing();}});})();
+    }).catch(camErr);
+  }
+  function startZXing(){
+    Promise.all([loadZXing(),navigator.mediaDevices.getUserMedia(constraints)]).then(function(r){
+      var st=r[1];
+      if(done){st.getTracks().forEach(function(t){t.stop();});return;}
+      stream=st;video.srcObject=st;var pl=video.play();if(pl&&pl.catch)pl.catch(function(){});
+      msg.textContent='Halte den Barcode in den Rahmen.';
+      var hints=new Map(),F=ZXing.BarcodeFormat;
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E]);
+      var rd=new ZXing.MultiFormatReader();rd.setHints(hints);
+      var cv=document.createElement('canvas'),ctx=cv.getContext('2d',{willReadFrequently:true}),n=0;
+      function tick(){
+        if(done)return;
+        var vw=video.videoWidth,vh=video.videoHeight;
+        if(vw&&vh){
+          // mittlerer Bildbereich (wo der Rahmen ist), verkleinert auf max. 800 px Breite
+          var cw=Math.round(vw*(n%2?1:0.8)),ch=Math.round(vh*(n%2?1:0.6)),sx=Math.round((vw-cw)/2),sy=Math.round((vh-ch)/2);
+          var sc=Math.min(1,800/cw);cv.width=Math.round(cw*sc);cv.height=Math.round(ch*sc);
+          ctx.drawImage(video,sx,sy,cw,ch,0,0,cv.width,cv.height);
+          try{var lum=new ZXing.HTMLCanvasElementLuminanceSource(cv);var res=rd.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(lum)));if(res){found(res.getText());return;}}catch(e){}
+          n++;
+        }
+        setTimeout(tick,120);
+      }
+      tick();
+    }).catch(camErr);
+  }
+  function camErr(e){
+    var n=e&&e.name;
+    msg.textContent=(n==='NotAllowedError'?'Kein Zugriff auf die Kamera. Erlaube ihn in den iPhone-Einstellungen oder gib die Nummer ein.':(e&&e.message==='lib')?'Scanner konnte nicht geladen werden. Bist du online?':'Kamera konnte nicht gestartet werden. Gib die Nummer unter dem Barcode ein.');
+  }
 }
 
 /* ---------- Portion wählen ---------- */
