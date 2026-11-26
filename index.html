@@ -12,7 +12,7 @@
 <meta name="theme-color" content="#0B110E" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-180.png">
-<link rel="icon" href="icon-180.png">
+<link rel="icon" href="icon-96.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -247,7 +247,7 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
 .rcrow:first-child{border-top:0}
 .rco{font-weight:700;font-size:0.88rem}
 .rcm{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 6px}
-.rcmatch{color:var(--accent);font-weight:600;font-size:0.82rem;text-align:left;min-height:32px;padding:4px 0}
+.rcmatch{color:var(--accent);font-weight:600;font-size:0.82rem;text-align:left;min-height:44px;padding:4px 0}
 .rcflag{font-size:0.7rem;font-weight:700;color:var(--muted);background:var(--bg);border-radius:8px;padding:3px 7px}
 .rcflag.bad{color:var(--danger)}
 .rcg{display:flex;align-items:center;gap:8px}
@@ -262,6 +262,11 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
 .mrow2{display:flex;align-items:center;gap:8px;padding:8px 0 8px 12px;border-radius:14px;background:var(--bg);margin-bottom:6px}
 .mrow2 .n{font-weight:600;font-size:0.88rem}.mrow2 .m{font-size:0.72rem;color:var(--muted)}
 .mrow2 .x{color:var(--muted);font-size:1.1rem;min-width:44px;min-height:44px;display:grid;place-items:center}
+.launch{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .35s ease,visibility .35s}
+.launch img{width:112px;height:112px;border-radius:26px;box-shadow:0 10px 30px rgba(16,40,28,.15)}
+.launch b{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-top:8px}
+.launch span{color:var(--muted);font-size:0.88rem;font-weight:500}
+.launch.off{opacity:0;visibility:hidden}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
   padding:11px 18px;border-radius:14px;font-weight:600;font-size:0.824rem;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -273,6 +278,7 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
 <body>
 <svg width="0" height="0" style="position:absolute"><defs><linearGradient id="grad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#12B76A"/><stop offset="1" stop-color="#0EA5A4"/></linearGradient></defs></svg>
 
+<div class="launch" id="launch" aria-hidden="true"><img src="icon-256.png" alt=""><b>Kalo</b><span>Kalorien zählen, einfach.</span></div>
 <div class="wrap">
   <!-- TAGEBUCH -->
   <section class="view on" id="v-diary">
@@ -328,7 +334,7 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.8</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.9</p>
     </div>
   </section>
 </div>
@@ -1394,6 +1400,9 @@ $('btnReset').onclick=function(){
 
 /* ---------- Offline ---------- */
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+
+/* ---------- Startbild ---------- */
+(function(){var t0=Date.now();function hide(){var l=$('launch');if(!l)return;setTimeout(function(){l.classList.add('off');setTimeout(function(){l.remove();},400);},Math.max(0,450-(Date.now()-t0)));}if(document.readyState==='complete')hide();else window.addEventListener('load',hide);setTimeout(hide,2500);})();
 
 /* ---------- Start ---------- */
 if(!S.profile)show('profile');else show('diary');
