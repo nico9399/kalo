@@ -306,7 +306,7 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.6</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.6.1</p>
     </div>
   </section>
 </div>
@@ -506,16 +506,39 @@ function offPer100(nu){
   return {k:Math.round(num(k)),p:+num(nu.proteins_100g).toFixed(1),c:+num(nu.carbohydrates_100g).toFixed(1),f:+num(nu.fat_100g).toFixed(1)};
 }
 var OFFCACHE={};
-function searchOFF(q){
-  if(OFFCACHE[q])return Promise.resolve(OFFCACHE[q]);
+function cleanBrand(b){if(Array.isArray(b))b=b[0];return String(b||'').split(',')[0].replace(/^[a-z]{2}:/,'').trim();}
+function fetchT(url,ms){
+  return new Promise(function(res,rej){var t=setTimeout(function(){rej(new Error('timeout'));},ms||10000);
+    fetch(url).then(function(r){clearTimeout(t);res(r);},function(e){clearTimeout(t);rej(e);});});
+}
+// 1) Neue Open-Food-Facts-Suche (schnell, eigenes Limit), Nährwerte werden beim Antippen geladen
+function searchSAL(q){
+  var url='https://search.openfoodfacts.org/search?q='+encodeURIComponent(q)+'&langs=de&page_size=30&sort_by=-unique_scans_n&fields=code,product_name,product_name_de,brands,countries_tags,countries,serving_quantity';
+  return fetchT(url,10000).then(function(r){if(!r.ok)throw new Error('http'+r.status);return r.json();}).then(function(j){
+    var de=[],other=[];
+    (j.hits||[]).forEach(function(p){
+      var name=String(p.product_name_de||p.product_name||'').trim();if(!name||!p.code)return;
+      var it={name:name,brand:cleanBrand(p.brands),src:'off',code:p.code,per100:null,serving:num(p.serving_quantity)||0,lazy:true};
+      var c=JSON.stringify(p.countries_tags||p.countries||'');
+      (c.indexOf('germany')>-1?de:other).push(it);
+    });
+    return de.concat(other).slice(0,24);
+  });
+}
+// 2) Ersatz: klassische Suche (max. ca. 10 Suchen/Minute)
+function searchCGI(q){
   var url='https://world.openfoodfacts.org/cgi/search.pl?search_terms='+encodeURIComponent(q)+'&search_simple=1&action=process&json=1&page_size=24&sort_by=unique_scans_n&tagtype_0=countries&tag_contains_0=contains&tag_0=germany&fields=code,product_name,product_name_de,brands,nutriments,serving_quantity';
-  return fetch(url).then(function(r){if(r.status===429)throw new Error('limit');if(!r.ok)throw new Error('http');return r.json();}).then(function(j){
+  return fetchT(url,12000).then(function(r){if(!r.ok)throw new Error('http'+r.status);return r.json();}).then(function(j){
     return (j.products||[]).map(function(p){
       var per=offPer100(p.nutriments||{});var name=(p.product_name_de||p.product_name||'').trim();
       if(!per||!name)return null;
-      return {name:name,brand:(p.brands||'').split(',')[0].trim(),src:'off',code:p.code,per100:per,serving:num(p.serving_quantity)||0};
+      return {name:name,brand:cleanBrand(p.brands),src:'off',code:p.code,per100:per,serving:num(p.serving_quantity)||0};
     }).filter(Boolean);
-  }).then(function(items){OFFCACHE[q]=items;return items;});
+  });
+}
+function searchOFF(q){
+  if(OFFCACHE[q])return Promise.resolve(OFFCACHE[q]);
+  return searchSAL(q).catch(function(){return searchCGI(q);}).then(function(items){OFFCACHE[q]=items;return items;});
 }
 function recentFoods(){
   var keys=Object.keys(S.days).sort().reverse(),seen={},out=[];
@@ -527,7 +550,7 @@ function recentFoods(){
 /* ---------- Hinzufügen: Suche ---------- */
 var MEALSHORT={breakfast:'Frühstück',lunch:'Mittag',dinner:'Abend',snack:'Snacks'};
 function foodRow(f,idx,star){
-  var sub=f.per100?(fmt(f.per100.k)+' kcal / 100 g'):(fmt(f.kcal)+' kcal'+(f.amount?' · '+esc(f.amount):''));
+  var sub=f.per100?(fmt(f.per100.k)+' kcal / 100 g'):f.lazy?'Antippen für Nährwerte':(fmt(f.kcal)+' kcal'+(f.amount?' · '+esc(f.amount):''));
   if(f.brand)sub=esc(f.brand)+' · '+sub;
   return '<button class="res" data-i="'+idx+'"><div class="rt"><div class="n">'+(star?'⭐ ':'')+esc(f.name)+'</div><div class="m">'+sub+'</div></div><span class="plus">+</span></button>';
 }
@@ -549,6 +572,14 @@ function openAdd(meal){
         resEl.querySelectorAll('.res').forEach(function(el){el.onclick=function(){pick(list[+el.dataset.i]);};});
       }
       function pick(f){
+        if(f.lazy&&!f.per100){
+          toast('Lade Nährwerte …');
+          lookupBarcode(f.code).then(function(d){
+            if(d.notFound||d.noNutri){toast('Keine Nährwerte vorhanden – bitte manuell eintragen');openManual(sel,null,f.name);return;}
+            f.per100=d.per100;f.serving=f.serving||d.serving;pick(f);
+          }).catch(function(){toast('Open Food Facts antwortet gerade nicht. Bitte gleich nochmal versuchen.');});
+          return;
+        }
         if(f.per100)openPortion({name:f.name,brand:f.brand,src:f.src,per100:f.per100,grams:f.grams||(f.serving||100),serving:f.serving||0},sel,null);
         else{ensureDay(iso(cur))[sel].push({id:uid(),name:f.name,amount:f.amount||'',kcal:num(f.kcal),p:num(f.p),c:num(f.c),f:num(f.f)});save();renderDiary();toast(f.name+' → '+MEALSHORT[sel]);}
       }
@@ -588,7 +619,7 @@ function openAdd(meal){
           items.forEach(function(f){list.push(f);h+=foodRow(f,list.length-1,false);});
           offBox.innerHTML=h;
           offBox.querySelectorAll('.res').forEach(function(el){el.onclick=function(){pick(list[+el.dataset.i]);};});
-        }).catch(function(e){offQ='';offBox.innerHTML='<div class="empty">'+(e&&e.message==='limit'?'Zu viele Suchen in kurzer Zeit. Bitte kurz warten und erneut versuchen.':'Open Food Facts antwortet gerade nicht. Das passiert bei mehr als ca. 10 Suchen pro Minute oder ohne Internet. Bitte kurz warten und erneut versuchen.')+'</div>';});
+        }).catch(function(e){offQ='';offBox.innerHTML='<div class="empty">'+(e&&e.message==='limit'?'Zu viele Suchen in kurzer Zeit. Bitte kurz warten und erneut versuchen.':'Open Food Facts antwortet gerade nicht (oder du bist offline). Bitte in einer Minute erneut versuchen.')+'</div>';});
       }
       qEl.oninput=function(){clearTimeout(timer);timer=setTimeout(render,150);};
       qEl.onkeydown=function(e){if(e.key==='Enter'){qEl.blur();}};
@@ -607,12 +638,12 @@ function loadZXing(){
 }
 function lookupBarcode(code){
   if(OFFCACHE['#'+code])return Promise.resolve(OFFCACHE['#'+code]);
-  return fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=code,product_name,product_name_de,brands,nutriments,serving_quantity')
+  return fetchT('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'.json?fields=code,product_name,product_name_de,brands,nutriments,serving_quantity',10000)
     .then(function(r){if(r.status===404)return {status:0};if(!r.ok)throw new Error('http');return r.json();})
     .then(function(j){
       if(!j||!j.product)return {notFound:true};
       var p=j.product,per=offPer100(p.nutriments||{}),name=(p.product_name_de||p.product_name||'').trim();
-      var res={name:name||('Produkt '+code),brand:(p.brands||'').split(',')[0].trim(),src:'off',code:code,per100:per,serving:num(p.serving_quantity)||0,noNutri:!per};
+      var res={name:name||('Produkt '+code),brand:cleanBrand(p.brands),src:'off',code:code,per100:per,serving:num(p.serving_quantity)||0,noNutri:!per};
       OFFCACHE['#'+code]=res;return res;
     });
 }
