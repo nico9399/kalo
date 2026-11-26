@@ -1,5 +1,5 @@
 /* Kalo Service Worker: App offline verfügbar machen */
-var V='kalo-0.6.1';
+var V='kalo-0.7';
 var ASSETS=['./','index.html','manifest.json','icon-180.png','bls.json','zxing.min.js'];
 self.addEventListener('install',function(e){
   e.waitUntil(caches.open(V).then(function(c){return c.addAll(ASSETS);}).then(function(){return self.skipWaiting();}));

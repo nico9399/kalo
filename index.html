@@ -243,6 +243,17 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
 .copyprev{background:var(--bg);border-radius:14px;padding:10px 12px;margin:0 0 12px;font-size:0.82rem}
 .copyprev div{display:flex;justify-content:space-between;padding:3px 0}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}.scframe span{display:none}}
+.rcrow{padding:10px 0;border-top:1px solid var(--line)}
+.rcrow:first-child{border-top:0}
+.rco{font-weight:700;font-size:0.88rem}
+.rcm{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 6px}
+.rcmatch{color:var(--accent);font-weight:600;font-size:0.82rem;text-align:left;min-height:32px;padding:4px 0}
+.rcflag{font-size:0.7rem;font-weight:700;color:var(--muted);background:var(--bg);border-radius:8px;padding:3px 7px}
+.rcflag.bad{color:var(--danger)}
+.rcg{display:flex;align-items:center;gap:8px}
+.rcg .inp{width:90px;padding:9px 10px;text-align:right}
+.rcg span{color:var(--muted);font-size:0.82rem;font-weight:600}
+.rcg b{margin-left:auto;font-size:0.88rem}
 .toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);
   padding:11px 18px;border-radius:14px;font-weight:600;font-size:0.824rem;opacity:0;transition:.25s;z-index:60;pointer-events:none;max-width:90vw;text-align:center}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -302,11 +313,12 @@ h2.sec{font-size:0.765rem;text-transform:uppercase;letter-spacing:.08em;color:va
         <input type="file" id="restoreFile" accept="application/json,.json" hidden>
         <p class="hint" id="lastBackup" style="margin-bottom:0"></p>
       </section>
+      <section class="card" id="kbCard"></section>
       <section class="card">
         <p class="hint" style="margin-top:0"><b>Als App installieren:</b> In Safari unten auf <b>Teilen</b> tippen, dann <b>„Zum Home-Bildschirm“</b>. Öffne Kalo danach immer über das Symbol auf dem Home-Bildschirm.</p>
         <button class="btn danger" id="btnReset">Alle Daten löschen</button>
       </section>
-      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.6.1</p>
+      <p class="credits">Nährwerte: <a href="https://blsdb.de" target="_blank" rel="noopener">Bundeslebensmittelschlüssel 4.0</a>, Max Rubner-Institut (<a href="https://creativecommons.org/licenses/by/4.0/deed.de" target="_blank" rel="noopener">CC BY 4.0</a>), Auszug: nur Energie und Makronährstoffe. Markenprodukte: <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener">Open Food Facts</a> (ODbL). Barcode-Scanner: ZXing (Apache-2.0).</p><p class="hint" style="text-align:center">Kalo · Version 0.7</p>
     </div>
   </section>
 </div>
@@ -562,11 +574,13 @@ function openAdd(meal){
     '<div class="field searchwrap"><input class="inp" id="q" type="search" placeholder="Lebensmittel suchen …" autocomplete="off" enterkeyhint="search"><button class="scanbtn" id="scanBtn" aria-label="Barcode scannen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg></button></div>'+
     '<div id="results" class="reslist"></div>'+
     '<div id="offBox"></div>'+
-    '<button class="btn ghost" id="manualBtn" style="margin-top:12px">Manuell eintragen</button>',
+    '<button class="btn ghost" id="kbBtn" style="margin-top:12px">📖 Aus dem Kochbuch</button>'+
+    '<button class="btn ghost" id="manualBtn">Manuell eintragen</button>',
     function(s){
       var qEl=s.querySelector('#q'),resEl=s.querySelector('#results'),offBox=s.querySelector('#offBox');
       s.querySelectorAll('#mealSeg button').forEach(function(b){b.onclick=function(){sel=b.dataset.m;s.querySelectorAll('#mealSeg button').forEach(function(x){x.classList.toggle('on',x===b);});};});
       s.querySelector('#manualBtn').onclick=function(){openManual(sel,null,qEl.value.trim());};
+      s.querySelector('#kbBtn').onclick=function(){openKochbuch(sel);};
       s.querySelector('#scanBtn').onclick=function(){openScanner(sel);};
       function bind(){
         resEl.querySelectorAll('.res').forEach(function(el){el.onclick=function(){pick(list[+el.dataset.i]);};});
@@ -626,6 +640,168 @@ function openAdd(meal){
       render();loadBLS().catch(function(){});
       setTimeout(function(){try{qEl.focus();}catch(e){}},300);
     });
+}
+
+
+/* ---------- Kochbuch-Verbindung („Unser Kochbuch“) ---------- */
+var KB_URL='https://jvqhethsmxqvzrwtrpno.supabase.co',KB_KEY='sb_publishable_v1Dgu4ll6ZPohwv9lISwSw_yxkyiJFm';
+function kb(){S.kb=S.kb||{};S.kb.map=S.kb.map||{};S.kb.units=S.kb.units||{};return S.kb;}
+function kbAuth(body,grant){
+  return fetch(KB_URL+'/auth/v1/token?grant_type='+grant,{method:'POST',headers:{apikey:KB_KEY,'content-type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error(j.error_code||j.msg||('http'+r.status));return j;});})
+    .then(function(j){kb().session={access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+(j.expires_in||3600)*1000,email:(j.user&&j.user.email)||(kb().session&&kb().session.email)||''};save();return kb().session;});
+}
+function kbToken(){
+  var se=kb().session;if(!se)return Promise.reject(new Error('login'));
+  if(se.expires_at>Date.now()+60000)return Promise.resolve(se.access_token);
+  return kbAuth({refresh_token:se.refresh_token},'refresh_token').then(function(x){return x.access_token;}).catch(function(e){if(navigator.onLine!==false){delete kb().session;save();}throw new Error('login');});
+}
+function kbRecipes(){
+  return kbToken().then(function(tok){
+    return fetch(KB_URL+'/rest/v1/recipes?select=id,title,servings,ingredients,category,updated_at&order=title.asc',{headers:{apikey:KB_KEY,Authorization:'Bearer '+tok}});
+  }).then(function(r){if(r.status===401){delete kb().session;save();throw new Error('login');}if(!r.ok)throw new Error('http');return r.json();})
+    .then(function(list){kb().recipes=list;kb().fetched=Date.now();save();return list;});
+}
+function renderKbCard(){
+  var el=$('kbCard');if(!el)return;var se=kb().session;
+  el.innerHTML='<p class="hint" style="margin-top:0"><b>📖 Unser Kochbuch</b><br>'+(se?'Verbunden als '+esc(se.email)+'. Kalo liest eure Rezepte nur, es ändert nichts im Kochbuch.':'Nicht verbunden. Melde dich beim Hinzufügen über „Aus dem Kochbuch“ an.')+'</p>'+
+    (se?'<button class="btn ghost" id="kbOut">Vom Kochbuch abmelden</button>':'');
+  if(se)$('kbOut').onclick=function(){delete kb().session;delete kb().recipes;save();renderKbCard();toast('Abgemeldet');};
+}
+function openKochbuch(meal){
+  if(!kb().session){kbLogin(meal);return;}
+  var sel=meal,list=kb().recipes||[];
+  openSheet('<h3>Aus dem Kochbuch</h3><div class="field"><input class="inp" id="kbq" type="search" placeholder="Rezept suchen …" autocomplete="off"></div><div id="kbList" class="reslist"></div>'+
+    '<button class="btn ghost" id="kbBack" style="margin-top:12px">Zurück zur Suche</button>',function(s){
+    var lEl=s.querySelector('#kbList');
+    function render(){
+      var q=norm(s.querySelector('#kbq').value.trim());
+      var items=(kb().recipes||[]).filter(function(r){return !q||norm(r.title).indexOf(q)>-1||norm(r.category).indexOf(q)>-1;});
+      if(!kb().recipes){lEl.innerHTML='<div class="empty">Rezepte werden geladen …</div>';return;}
+      lEl.innerHTML=items.length?items.map(function(r,i){var n=(r.ingredients||[]).length;return '<button class="res" data-rid="'+esc(r.id)+'"><div class="rt"><div class="n">'+esc(r.title)+'</div><div class="m">'+(r.category?esc(r.category)+' · ':'')+(r.servings||1)+' Portionen · '+n+' Zutaten</div></div><span class="plus">›</span></button>';}).join(''):'<div class="empty">Kein Rezept gefunden.</div>';
+      lEl.querySelectorAll('[data-rid]').forEach(function(b){b.onclick=function(){var r=(kb().recipes||[]).filter(function(x){return x.id===b.dataset.rid;})[0];if(r)openRecipe(r,sel);};});
+    }
+    s.querySelector('#kbq').oninput=render;s.querySelector('#kbBack').onclick=function(){openAdd(sel);};
+    render();
+    kbRecipes().then(render).catch(function(e){
+      if(e.message==='login'){kbLogin(sel);return;}
+      if(!kb().recipes)lEl.innerHTML='<div class="empty">Kochbuch nicht erreichbar. Bist du online?</div>';
+      else toast('Offline – zeige gespeicherte Rezepte');
+    });
+  });
+}
+function kbLogin(meal){
+  openSheet('<h3>Mit dem Kochbuch verbinden</h3><p class="hint" style="margin-top:-6px">Melde dich mit deinem Login von „Unser Kochbuch“ an. Kalo liest die Rezepte nur und speichert dein Passwort nicht, nur eine Anmeldung auf diesem iPhone.</p>'+
+    '<div class="field"><label>E-Mail</label><input class="inp" id="kbE" type="email" autocomplete="username" inputmode="email"></div>'+
+    '<div class="field"><label>Passwort</label><input class="inp" id="kbP" type="password" autocomplete="current-password"></div>'+
+    '<button class="btn primary" id="kbGo">Anmelden</button><button class="btn ghost" id="kbCancel">Abbrechen</button>',function(s){
+    s.querySelector('#kbCancel').onclick=function(){openAdd(meal);};
+    s.querySelector('#kbGo').onclick=function(){
+      var e=s.querySelector('#kbE').value.trim(),pw=s.querySelector('#kbP').value;
+      if(!e||!pw){toast('Bitte E-Mail und Passwort eingeben');return;}
+      var b=s.querySelector('#kbGo');b.disabled=true;b.textContent='Melde an …';
+      kbAuth({email:e,password:pw},'password').then(function(){toast('Mit dem Kochbuch verbunden');openKochbuch(meal);})
+        .catch(function(err){b.disabled=false;b.textContent='Anmelden';toast(err.message==='invalid_credentials'?'E-Mail oder Passwort falsch':'Anmeldung fehlgeschlagen. Bist du online?');});
+    };
+  });
+}
+/* Zutaten → Gramm */
+var UNIT_G={'g':1,'gramm':1,'ml':1,'kg':1000,'l':1000,'liter':1000,'el':15,'tl':5,'prise':0.5,'msp':0.5,'messerspitze':0.5,'becher':200,'dose':400,'tasse':150,'bund':40,'zehe':4,'zehen':4,'scheibe':30,'scheiben':30,'pck':10,'päckchen':10,'packung':250,'stück':0,'stk':0,'':0};
+var PIECE_G=[['knoblauch',4],['hokkaido',1200],['kürbis',1200],['eigelb',18],['eiweiß',32],['eier',60],['ei',60],['zwiebel',80],['schalotte',30],['apfel',150],['äpfel',150],['banane',120],['kartoffel',120],['tomate',100],['paprika',150],['zitrone',100],['limette',60],['orange',180],['karotte',80],['möhre',80],['zucchini',250],['aubergine',300],['gurke',400],['avocado',150],['brötchen',60],['chili',15],['lorbeer',0.2]];
+function ingGrams(ing){
+  var k=kb(),key=norm(ing.name)+'|'+norm(ing.unit||'');
+  var amt=num(ing.amount)||(ing.amount==null||ing.amount===''?1:0);
+  if(k.units[key]!=null)return {g:k.units[key]*amt,perUnit:k.units[key],guess:false,amt:amt};
+  var u=norm(ing.unit||'').replace(/\.$/,'');
+  var per=UNIT_G.hasOwnProperty(u)?UNIT_G[u]:null,guess=false;
+  if(!per){var n=norm(ing.name);per=100;guess=true;for(var i=0;i<PIECE_G.length;i++){if(n.indexOf(norm(PIECE_G[i][0]))>-1){per=PIECE_G[i][1];break;}}if(u==='g'||u==='ml')guess=false;}
+  else if(['el','tl','prise','msp','messerspitze','becher','dose','tasse','bund','scheibe','scheiben','pck','päckchen','packung','zehe','zehen'].indexOf(u)>-1)guess=true;
+  return {g:per*amt,perUnit:per,guess:guess,amt:amt};
+}
+function ingMatch(ing){
+  var k=kb(),key=norm(ing.name);
+  if(k.map[key])return {m:k.map[key],auto:false};
+  var r=autoMatch(ing.name);
+  return r?{m:{name:r.name,per100:r.per100,src:'bls'},auto:true}:{m:null,auto:true};
+}
+// Häufige Rezeptzutaten → passender BLS-Eintrag (Grundzutat, roh)
+var ING_ALIAS=[['kokosmilch','Kokosmilch/Kokosnussmilch'],['buttermilch','Buttermilch'],['spaghetti','Teigwaren eifrei, roh'],['nudeln','Teigwaren eifrei, roh'],['penne','Teigwaren eifrei, roh'],['fusilli','Teigwaren eifrei, roh'],['makkaroni','Teigwaren eifrei, roh'],['lasagne','Teigwaren eifrei, roh'],['pasta','Teigwaren eifrei, roh'],['tagliatelle','Eierteigwaren roh'],
+ ['guanciale','Schwein Bauchspeck, Rohpökelware, geräuchert'],['pancetta','Schwein Bauchspeck, Rohpökelware, geräuchert'],['speck','Schwein Bauchspeck, Rohpökelware, geräuchert'],['bacon','Schwein Frühstücksspeck, Rohpökelware, geräuchert'],
+ ['pecorino','Parmesan mind. 30 % Fett i. Tr.'],['parmesan','Parmesan mind. 30 % Fett i. Tr.'],['grana','Parmesan mind. 30 % Fett i. Tr.'],['mozzarella','Mozzarella mind. 45 % Fett i. Tr.'],['gouda','Gouda 48 % Fett i. Tr.'],
+ ['hokkaido','Kürbis Hokkaido (C. maxima) roh'],['kürbiskern','Kürbiskern'],['kürbis','Kürbis Pumpkin (C. pepo) roh'],['frühlingszwiebel','Frühlingszwiebel/Lauchzwiebel, roh'],['zwiebel','Speisezwiebel roh'],['knoblauch','Knoblauch roh'],['ingwer','Ingwer/Ingwerwurzel, roh'],
+ ['tomatenmark','Tomatenmark'],['passierte tomaten','Tomaten passiert/Tomatenpüree'],['tomate','Tomate roh'],
+ ['puderzucker','Puderzucker'],['vanillezucker','Vanillezucker'],['zucker','Zucker weiß (Raffinadezucker/Weißzucker)'],['mehl','Weizen Mehl, Type 405'],
+ ['butter','Butter mild gesäuert'],['sahne','Schlagsahne mind. 30 % Fett'],['quark','Speisequark Magerstufe, Magerquark < 10 % Fett i. Tr.'],['joghurt','Joghurt mild, mind. 3,5 % Fett'],['milch','H-Vollmilch 3,5 % Fett, ultrahocherhitzt'],
+ ['olivenöl','Olivenöl'],['rapsöl','Rapsöl/Rüböl'],['sonnenblumenöl','Sonnenblumenöl'],['öl','Rapsöl/Rüböl'],
+ ['salz','Speisesalz jodiert/Jodsalz'],['pfeffer','Pfeffer schwarz, getrocknet'],['wasser','Trinkwasser'],
+ ['eier','Hühnerei roh'],['ei','Hühnerei roh'],['hähnchenbrust','Hähnchen Brustfilet, roh'],['hackfleisch','Rind Hackfleisch, roh'],['lachs','Lachs roh'],['reis','Reis poliert, roh']];
+var BLSBYNAME=null;
+function autoMatch(name){
+  var n=norm(name);if(!BLS)return null;
+  if(!BLSBYNAME){BLSBYNAME={};BLS.forEach(function(it){BLSBYNAME[it.n]=it;});}
+  for(var i=0;i<ING_ALIAS.length;i++){var k=norm(ING_ALIAS[i][0]);
+    var hit=k.length<=3?new RegExp('(^|[^a-z])'+k+'([^a-z]|$)').test(n):n.indexOf(k)>-1;
+    if(hit){var it=BLSBYNAME[norm(ING_ALIAS[i][1])];if(it)return {name:it.name,per100:{k:it.k,p:it.p,c:it.ch,f:it.f}};}}
+  // sonst: Suche, Grundzutaten bevorzugen (roh, kurz, kein fertiges Gericht)
+  var res=searchBLS(name).slice(0,40);if(!res.length){var w=n.split(/[\s,-]+/).filter(function(x){return x.length>2;});if(w.length>1)res=searchBLS(w[w.length-1]).slice(0,40);}
+  var best=null,bs=-1e9;
+  res.forEach(function(r,idx){var rn=norm(r.name),sc=-idx*2-rn.length/3;
+    if(/\broh\b/.test(rn))sc+=40;if(/ mit |\(|gericht|auflauf|brot|brötchen/.test(rn))sc-=35;
+    if(/gebraten|gekocht|frittiert|konserve|gebacken|gegrillt|gedünstet/.test(rn)&&!/gebraten|gekocht|konserve/.test(n))sc-=25;
+    if(rn===n||rn===n+' roh'||rn.indexOf(n+',')===0||rn.indexOf(n+'/')===0)sc+=50;else if(rn.indexOf(n+' ')===0)sc+=15;
+    if(sc>bs){bs=sc;best=r;}});
+  return best;
+}
+function openRecipe(r,meal){
+  if(!BLS){openSheet('<h3>'+esc(r.title)+'</h3><div class="empty">Lebensmittel werden geladen …</div>');loadBLS().then(function(){openRecipe(r,meal);}).catch(function(){toast('Lebensmittelliste fehlt. Bist du online?');});return;}
+  var ings=(r.ingredients||[]).filter(function(i){return i&&i.name;});
+  var serv=Math.max(1,num(r.servings)||1);
+  function calcAll(){
+    var tot={k:0,p:0,c:0,f:0,g:0},warn=0;
+    var rows=ings.map(function(ing){var gm=ingGrams(ing),mt=ingMatch(ing),x=gm.g/100;var P=mt.m&&mt.m.per100;
+      if(P){tot.k+=P.k*x;tot.p+=P.p*x;tot.c+=P.c*x;tot.f+=P.f*x;}tot.g+=gm.g;if(!mt.m||mt.auto||gm.guess)warn++;
+      return {ing:ing,gm:gm,mt:mt,k:P?P.k*x:0};});
+    return {rows:rows,tot:tot,warn:warn};
+  }
+  function amtTxt(i){return ((i.amount!=null&&i.amount!=='')?String(i.amount).replace('.',',')+' ':'')+(i.unit?i.unit+' ':'')+i.name;}
+  openSheet('<h3>'+esc(r.title)+'</h3><p class="hint" style="margin-top:-8px">Rezept für '+serv+' Portion'+(serv>1?'en':'')+' · Zutaten einmal prüfen, Kalo merkt sich deine Zuordnungen.</p><div id="rcRows"></div><div class="result" id="rcSum"></div>'+
+    '<button class="btn primary" id="rcGo">Weiter: Portion wählen</button><button class="btn ghost" id="rcBack">Zurück zu den Rezepten</button>',function(s){
+    function render(){
+      var c=calcAll();
+      s.querySelector('#rcRows').innerHTML=c.rows.map(function(x,i){
+        var flag=(!x.mt.m)?'<span class="rcflag bad">nicht zugeordnet</span>':(x.mt.auto?'<span class="rcflag">automatisch – prüfen</span>':'');
+        return '<div class="rcrow"><div class="rco">'+esc(amtTxt(x.ing))+'</div>'+
+          '<div class="rcm"><button class="rcmatch" data-mi="'+i+'">'+(x.mt.m?'→ '+esc(x.mt.m.name):'→ Lebensmittel wählen')+'</button>'+flag+'</div>'+
+          '<div class="rcg"><input class="inp rcin" data-gi="'+i+'" inputmode="decimal" value="'+r0(x.gm.g)+'" aria-label="Gramm für '+esc(x.ing.name)+'"><span>g'+(x.gm.guess?' ≈':'')+'</span><b>'+fmt(x.k)+' kcal</b></div></div>';}).join('');
+      var t=c.tot;
+      s.querySelector('#rcSum').innerHTML='<div class="hint">Pro Portion ('+fmt(t.g/serv)+' g)</div><div class="big">'+fmt(t.k/serv)+' kcal</div>'+
+        '<div class="rl"><span>Eiweiß · Kohlenh. · Fett</span><b>'+r0(t.p/serv)+' · '+r0(t.c/serv)+' · '+r0(t.f/serv)+' g</b></div>'+
+        '<div class="hint">Ganzes Rezept: '+fmt(t.k)+' kcal'+(c.warn?' · '+c.warn+' Zutat'+(c.warn>1?'en':'')+' bitte prüfen':' · alles geprüft ✓')+'</div>';
+      s.querySelectorAll('.rcmatch').forEach(function(b){b.onclick=function(){pickMatch(c.rows[+b.dataset.mi].ing);};});
+      s.querySelectorAll('.rcin').forEach(function(inp){inp.onchange=function(){var x=c.rows[+inp.dataset.gi];var g=num(inp.value);if(!(g>=0))return;var amt=x.gm.amt||1;kb().units[norm(x.ing.name)+'|'+norm(x.ing.unit||'')]=g/amt;
+        if(x.mt.m&&x.mt.auto)kb().map[norm(x.ing.name)]=x.mt.m;save();render();};});
+      s.querySelector('#rcGo').onclick=function(){
+        if(!(t.g>0)){toast('Bitte zuerst die Zutaten prüfen');return;}
+        c.rows.forEach(function(x){if(x.mt.m&&x.mt.auto)kb().map[norm(x.ing.name)]=x.mt.m;});save();
+        var per={k:Math.round(t.k/t.g*100),p:+(t.p/t.g*100).toFixed(1),c:+(t.c/t.g*100).toFixed(1),f:+(t.f/t.g*100).toFixed(1)};
+        openPortion({name:r.title,src:'kb',per100:per,grams:Math.round(t.g/serv),serving:Math.round(t.g/serv)},meal,null);
+      };
+    }
+    function pickMatch(ing){
+      openSheet('<h3>„'+esc(ing.name)+'“ zuordnen</h3><div class="field"><input class="inp" id="pmq" type="search" value="'+esc(ing.name)+'" autocomplete="off"></div><div id="pmList" class="reslist"></div>'+
+        '<button class="btn ghost" id="pmZero" style="margin-top:10px">Ohne Kalorien zählen (z. B. Salz, Wasser, Gewürze)</button><button class="btn ghost" id="pmBack">Zurück</button>',function(s2){
+        var list=[];
+        function rl(){var q=s2.querySelector('#pmq').value.trim();list=searchBLS(q).slice(0,25).concat(S.favs.filter(function(f){return f.per100&&norm(f.name).indexOf(norm(q))>-1;}).map(function(f){return {name:f.name,per100:f.per100,src:f.src};}));
+          s2.querySelector('#pmList').innerHTML=list.length?list.map(function(f,i){return '<button class="res" data-pi="'+i+'"><div class="rt"><div class="n">'+esc(f.name)+'</div><div class="m">'+fmt(f.per100.k)+' kcal / 100 g</div></div><span class="plus">✓</span></button>';}).join(''):'<div class="empty">Nichts gefunden. Probier ein anderes Wort.</div>';
+          s2.querySelectorAll('[data-pi]').forEach(function(b){b.onclick=function(){var f=list[+b.dataset.pi];kb().map[norm(ing.name)]={name:f.name,per100:f.per100,src:f.src||'bls'};save();openRecipe(r,meal);};});}
+        s2.querySelector('#pmq').oninput=rl;rl();
+        s2.querySelector('#pmZero').onclick=function(){kb().map[norm(ing.name)]={name:'ohne Kalorien',per100:{k:0,p:0,c:0,f:0},src:'none'};save();openRecipe(r,meal);};
+        s2.querySelector('#pmBack').onclick=function(){openRecipe(r,meal);};
+      });
+    }
+    s.querySelector('#rcBack').onclick=function(){openKochbuch(meal);};
+    render();
+  });
 }
 
 /* ---------- Barcode-Scanner ---------- */
@@ -740,13 +916,13 @@ function openScanner(meal){
 /* ---------- Portion wählen ---------- */
 function openPortion(food,meal,edit){
   var sel=meal,g=num(food.grams)||100;
-  var srcName=food.src==='bls'?'Bundeslebensmittelschlüssel':food.src==='off'?'Open Food Facts':'Eigener Eintrag';
+  var srcName=food.src==='bls'?'Bundeslebensmittelschlüssel':food.src==='off'?'Open Food Facts':food.src==='kb'?'Rezept aus „Unser Kochbuch“':'Eigener Eintrag';
   var chips=[50,100,150,200,250];
   var P=food.per100;
   openSheet(
     '<h3>'+esc(food.name)+'</h3><p class="hint" style="margin-top:-8px">'+(food.brand?esc(food.brand)+' · ':'')+srcName+'</p>'+
     '<div class="field"><label>Menge in Gramm (bzw. ml)</label><input class="inp big" id="ptg" inputmode="decimal" value="'+r0(g)+'"></div>'+
-    '<div class="chips">'+(food.serving?'<button data-g="'+food.serving+'">1 Portion ('+r0(food.serving)+' g)</button>':'')+chips.map(function(c){return '<button data-g="'+c+'">'+c+' g</button>';}).join('')+'</div>'+
+    '<div class="chips">'+(food.src==='kb'&&food.serving?[0.5,1,1.5,2].map(function(f){return '<button data-g="'+r0(food.serving*f)+'">'+String(f).replace('.',',')+' Portion'+(f>1?'en':'')+'</button>';}).join(''):(food.serving?'<button data-g="'+food.serving+'">1 Portion ('+r0(food.serving)+' g)</button>':'')+chips.map(function(c){return '<button data-g="'+c+'">'+c+' g</button>';}).join(''))+'</div>'+
     '<div class="result" id="ptres"></div>'+
     (edit?'':'<label class="check"><input type="checkbox" id="ptFav"> Als Favorit merken</label>')+
     '<button class="btn primary" id="ptSave">'+(edit?'Speichern':'Hinzufügen')+'</button>'+
@@ -766,7 +942,7 @@ function openPortion(food,meal,edit){
         if(!(g>0)){toast('Bitte eine Menge eingeben');gEl.focus();return;}
         var x=g/100;
         var item={id:edit?edit.id:uid(),name:food.name,brand:food.brand||'',src:food.src||'',per100:P,grams:g,serving:food.serving||0,
-          amount:fmt(g)+' g',kcal:Math.round(P.k*x),p:+(P.p*x).toFixed(1),c:+(P.c*x).toFixed(1),f:+(P.f*x).toFixed(1)};
+          amount:(food.src==='kb'&&food.serving?(Math.round(g/food.serving*100)/100).toLocaleString('de-DE')+' Portion'+(g/food.serving>1?'en':'')+' · ':'')+fmt(g)+' g',kcal:Math.round(P.k*x),p:+(P.p*x).toFixed(1),c:+(P.c*x).toFixed(1),f:+(P.f*x).toFixed(1)};
         if(edit){var fe=findEntry(sel,edit.id);if(fe)fe.list[fe.i]=item;}
         else ensureDay(iso(cur))[sel].push(item);
         if(!edit&&s.querySelector('#ptFav').checked)addFav(item);
@@ -1075,12 +1251,14 @@ function renderProfile(){
     save();toast('Profil gespeichert');
     if(onboarding){document.querySelector('.tabbar').style.display='flex';show('diary');}else renderProfile();
   };
+  renderKbCard();
   $('lastBackup').textContent=S.lastBackup?'Letztes Backup: '+new Date(S.lastBackup).toLocaleDateString('de-DE',{day:'numeric',month:'long',year:'numeric'}):'Noch kein Backup gemacht.';
 }
 
 /* ---------- Backup ---------- */
 function doBackup(){
-  var payload=JSON.stringify({app:'kalo',version:1,exported:new Date().toISOString(),data:S},null,1);
+  var copy=JSON.parse(JSON.stringify(S));if(copy.kb)delete copy.kb.session;
+  var payload=JSON.stringify({app:'kalo',version:1,exported:new Date().toISOString(),data:copy},null,1);
   var name='kalo-backup-'+iso(new Date())+'.json';
   var blob=new Blob([payload],{type:'application/json'});
   function done(){S.lastBackup=new Date().toISOString();save();renderBanner();if($('v-profile').classList.contains('on'))renderProfile();toast('Backup erstellt');}
